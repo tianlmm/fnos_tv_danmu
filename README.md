@@ -1,113 +1,74 @@
-# 飞牛TV 弹幕版 🎯
+# FNTV · 飞牛影视 TV / 手机客户端（在线扩展 + 弹幕）
 
-> 基于飞牛影视 API 的第三方 Android TV 客户端，支持弹幕、自动连播、TV 遥控器优化操作。
+> 基于 [rgcaafe/fnos_tv_danmu](https://github.com/rgcaafe/fnos_tv_danmu) 的二次开发版本：
+> 修复在线资源播放、重做 TV 端界面、补齐日志与自动更新。
+> 本仓库的所有下载与更新都指向 **tianlmm/fnos_tv_danmu** 自己的 Releases。
 
----
+## 下载
 
-## 📥 下载与使用
+从 [Releases](https://github.com/tianlmm/fnos_tv_danmu/releases/latest) 页面下载最新版本的 APK 安装包，在 Android 电视 / 手机上安装即可使用。
 
-### 方式一：直接下载 APK
-从 [Releases](https://github.com/rgcaafe/fnos_tv_danmu/releases) 页面下载最新版本的 APK 安装包，在 Android 电视/手机上安装即可使用。
+- 最新版本：**v1.3.4**
+- 直链：`https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.4/FNTV_1.3.4.apk`
+- App 内「设置 → 检查更新」也会从本仓库 `update.json` 自动检测新版本
 
-### 方式二：本地构建
+## 主要特性
+
+- **兼容「影视在线扩展」fnmedia-ext**：扩展注入的热门电影 / 热门剧集 / 动漫新番 / 热门综艺、海量四库、小雅系列都会出现在首页，点开即播；已修复在线资源起播黑屏（HLS 识别）。
+- **弹幕**：对接 Danmu API（默认 `http://<NAS>:9321`），按片名自动匹配 B 站 / 腾讯 / 爱奇艺等弹幕源，匹配不到可手动搜索；支持密度、速度、透明度、屏蔽词。
+- **播放**：ExoPlayer，硬解 / 软解切换，HLS / MP4 / STRM / 网盘直链，倍速，断点续播，自动连播。
+- **界面**：顶部标题 + 横向媒体库标签条，分区单行横滑（3 张完整 + 第 4 张露一点），3:4 海报卡，遥控器全界面可操作。
+- **搜索**：首页右上角 🔍，聚合本地与在线结果，结果 3 列网格。
+- **日志**：运行日志（单文件 512KB 上限、最新在最上面）+ 崩溃记录，设置页可导出分享。
+- **在线更新**：检查更新 → 从本仓库 Releases 下载安装。
+
+## 安装
+
+1. 下载 APK；
+2. 电视 / 手机允许「安装未知来源应用」；
+3. 打开 App，服务器填 `http://<你的NAS地址>:5666`，账号密码用**飞牛影视的账号**（不是 fnOS 系统账号）；
+4. 弹幕服务器默认按 NAS 地址推算为 `:9321`，未部署 danmu-api 时可在设置里改成自己的地址。
+
+> 从旧版 `fnx*` 测试包（debug 签名）升级，需要先卸载再安装；从 1.3.0 起为正式签名，可直接覆盖升级。
+
+## 环境要求
+
+| 项 | 要求 |
+|---|---|
+| 系统 | Android 4.4（API 19）及以上 |
+| 服务端 | 飞牛影视（trim.media）已安装并启用 |
+| 在线资源（可选） | [fnmedia-ext](https://github.com/yujian0815/fnmedia-ext) 影视在线扩展 |
+| 弹幕（可选） | [danmu_api](https://github.com/huangxd-/danmu_api)，默认端口 9321 |
+
+## 版本历史（本仓库）
+
+- **1.3.4** 修复部分片源起播 1.5 秒后闪退（HDR 检查空指针）
+- **1.3.3** 首页预览错峰加载，启动重复请求去重
+- **1.3.2** 图片请求日志静默、失败海报负缓存
+- **1.3.1** 日志倒序 + 图片内存/磁盘缓存优化
+- **1.3.0** 首个正式版：在线播放修复、首页改版、搜索、日志、更新源改为本仓库
+
+## 构建
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/rgcaafe/fnos_tv_danmu.git
-cd fnos_tv_danmu
-
-# 2. 编译（需要 Android SDK）
-# Windows (gradlew.bat)
-.\gradlew assembleRelease
-
-# Linux / macOS
+# 需要 JDK 11 + Android SDK 33（platforms;android-33、build-tools;33.0.2）
+echo "sdk.dir=/path/to/android-sdk" > local.properties
 ./gradlew assembleRelease
-
-# 3. 编译完成后 APK 位于：
-# app/build/outputs/apk/release/FNTV_release_*.apk
 ```
 
-> 注意：本地构建需要安装 [Android Studio](https://developer.android.com/studio) 并配置好 Android SDK（API 33）。如果使用 Windows 系统，构建时部分依赖可能需要科学上网。
+正式签名使用仓库外的 `keystore.properties`（指向 `.jks`，已在 `.gitignore` 中排除）。
+没有该文件时 `assembleRelease` 会产出未签名包。
 
----
+## 致谢
 
-## 📦 功能特点
-
-- **弹幕支持** — 集成 Danmu API，自动匹配番剧弹幕，支持搜索手动选择剧集
-- **继续观看** — 记录播放进度，首页快速续播
-- **剧集自动连播** — 播放完成后自动播放下一集
-- **TV 遥控器优化** — 全界面 DPAD 焦点导航，适配电视遥控器
-- **倍速播放** — 支持 0.5x ~ 2.0x 播放速度
-- **播放比例** — 适应 / 拉伸 两种模式
-- **硬解/软解切换** — 支持硬件解码与软件解码
-- **锁定模式** — 锁定后隐藏控制栏，防止误触
-- **自动更新** — 内置更新检测，支持 CDN 加速下载安装
-
----
-
-## 🛠 技术栈
-
-- **开发语言**: Java
-- **播放器**: ExoPlayer 2.18.7
-- **网络请求**: Retrofit2 + OkHttp3
-- **弹幕渲染**: 自定义 Canvas 弹幕引擎
-- **最低支持**: Android 4.4 (API 19)
-- **目标 SDK**: Android 12 (API 32)
-
----
-
-## 🔐 登录说明
-
-登录账号密码为 **飞牛影视的账号密码**，非本应用的独立账号。
-
-- 服务器地址格式：`http://<你的NAS地址>:<端口>`
-- 默认端口通常为 `5666`
-- 支持勾选"记住密码"实现自动登录
-
----
-
-## 🙏 致谢
-
-- [**fntv-electron**](https://github.com/QiaoKes/fntv-electron) — 本项目中的飞牛影视 API 接口逻辑参考并解析自该开源项目
+- [**rgcaafe/fnos_tv_danmu**](https://github.com/rgcaafe/fnos_tv_danmu) — 上游项目
+- [**fntv-electron**](https://github.com/QiaoKes/fntv-electron) — 飞牛影视 API 接口逻辑参考
+- [**fnmedia-ext**](https://github.com/yujian0815/fnmedia-ext) — 影视在线扩展（本客户端重点适配对象）
 - [**Danmu API**](https://github.com/huangxd-/danmu_api) — 弹幕数据服务
-- **ExoPlayer** — 高性能 Android 播放器
+- **ExoPlayer** — 播放器
 
----
+## 声明
 
-## ⚠️ 声明
-
-本项目为**第三方客户端**，与飞牛影视官方无关。使用前请确保遵守相关服务条款。
-
----
-
-## ❓ 常见问题
-
-### Q：弹幕无法加载？
-1. 确保已在"设置"中正确配置弹幕服务器地址（默认 `http://<NAS>:9321`）
-2. 检查弹幕服务是否正常运行
-3. 可通过弹幕面板的"弹幕搜索"手动选择剧集
-
-### Q：自动匹配弹幕不准确？
-- 自动匹配基于文件名，可能会匹配错误的弹幕数据
-- 匹配失败时可使用搜索面板手动选择，或重新播放再次匹配
-
-### Q：遥控器无法操作？
-- 控制栏显示时，方向键在按钮间移动焦点
-- 按 `↑` 移到弹幕/锁定按钮，再按一次隐藏控制栏
-- 按 `←` 返回移除焦点，再按一次退出播放（需确认）
-
-### Q：播放卡顿？
-- 尝试在设置中切换"解码模式"为硬解或软解
-- 检查网络连接质量
-
-### Q：如何更新？
-- 设置页 → 检查更新，支持 CDN 加速下载安装
-- 也可手动下载 APK 安装
-
----
-
-## 📄 License
-
-[GNU General Public License v3.0](LICENSE)
-
-本项目基于 GPLv3 协议开源。
+本项目为第三方客户端，与飞牛官方无关。在线资源来自用户自行配置的扩展与接口，
+本项目不提供、不存储、不分发任何影视内容，请自行确保合法使用。
+License：[GPL-3.0](LICENSE)
