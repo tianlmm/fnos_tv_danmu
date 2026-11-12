@@ -8,8 +8,8 @@
 
 从 [Releases](https://github.com/tianlmm/fnos_tv_danmu/releases/latest) 页面下载最新版本的 APK 安装包，在 Android 电视 / 手机上安装即可使用。
 
-- 最新版本：**v1.3.4**
-- 直链：`https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.4/FNTV_1.3.4.apk`
+- 最新版本：**v1.3.5**
+- 直链：`https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.5/FNTV_1.3.5.apk`
 - App 内「设置 → 检查更新」也会从本仓库 `update.json` 自动检测新版本
 
 ## 主要特性
@@ -42,6 +42,7 @@
 
 ## 版本历史（本仓库）
 
+- **1.3.5** 问题反馈改为本仓库 Issues，README/仓库信息全部指向本仓库
 - **1.3.4** 修复部分片源起播 1.5 秒后闪退（HDR 检查空指针）
 - **1.3.3** 首页预览错峰加载，启动重复请求去重
 - **1.3.2** 图片请求日志静默、失败海报负缓存
