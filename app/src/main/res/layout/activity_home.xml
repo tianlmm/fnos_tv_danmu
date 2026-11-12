@@ -230,6 +230,7 @@ DPAD 遥控器友好
                 android:scrollbars="none">
 
                 <LinearLayout
+                    android:id="@+id/settingsContent"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"

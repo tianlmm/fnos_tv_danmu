@@ -166,6 +166,7 @@ public class HomeActivity extends AppCompatActivity {
         TextView btnHomeSearch = findViewById(R.id.btnHomeSearch);
         if (btnHomeSearch != null) btnHomeSearch.setOnClickListener(v -> showSearchDialog());
         startHomeClock();
+        applyResponsivePaddings();
         tvDecoderValue = findViewById(R.id.tvDecoderValue);
         btnLogout = findViewById(R.id.btnLogout);
         btnExportLog = findViewById(R.id.btnExportLog);
@@ -530,12 +531,9 @@ public class HomeActivity extends AppCompatActivity {
         h.setTypeface(Typeface.DEFAULT_BOLD);
         cont.addView(h);
 
-        boolean landscape = getResources().getConfiguration().orientation
-                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        int cardW = (int) (screenW * (landscape ? 0.13f : 0.27f));
-        if (cardW < dpToPx(120)) cardW = dpToPx(120);
-        int posterH = cardW * 4 / 3;
+        int[] size = computeCardSize();
+        int cardW = size[0];
+        int posterH = size[1];
         int gap = dpToPx(8);
 
         HorizontalScrollView hsv = new HorizontalScrollView(this);
@@ -705,18 +703,39 @@ public class HomeActivity extends AppCompatActivity {
     // ==================== 横向滚动卡片 ====================
 
 
+    /** 按屏幕方向计算卡片尺寸：竖屏一行 3 张出头，横屏按高度限制避免卡片过高 */
+    private int[] computeCardSize() {
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int w = getResources().getDisplayMetrics().widthPixels;
+        int h = getResources().getDisplayMetrics().heightPixels;
+        int cardW = landscape ? (int) Math.min(w * 0.13f, h * 0.42f) : (int) (w * 0.27f);
+        if (cardW < dpToPx(100)) cardW = dpToPx(100);
+        return new int[]{cardW, cardW * 4 / 3};
+    }
+
+    /** 横屏时给设置页/媒体库页留白，避免内容被拉得过宽 */
+    private void applyResponsivePaddings() {
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        if (!landscape) return;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int side = Math.max(dpToPx(16), (screenW - dpToPx(780)) / 2);
+        View sc = findViewById(R.id.settingsContent);
+        if (sc != null) sc.setPadding(side, dpToPx(16), side, dpToPx(16));
+        if (libraryContainer != null)
+            libraryContainer.setPadding(side, dpToPx(8), side, dpToPx(8));
+    }
+
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     /** 官方风格：每个分区一排大卡片，左右滑动（Netflix 式单行横滑） */
     private void populateGrid(LinearLayout cont, List<PlayListItem> items) {
-        boolean landscape = getResources().getConfiguration().orientation
-                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        int cardW = (int) (screenW * (landscape ? 0.13f : 0.27f));
-        if (cardW < dpToPx(120)) cardW = dpToPx(120);
-        int posterH = cardW * 4 / 3;  // 3:4，比 2:3 矮一些，避免卡片显得拉长
+        int[] size = computeCardSize();
+        int cardW = size[0];
+        int posterH = size[1];
         int gap = dpToPx(8);
 
         HorizontalScrollView hsv = new HorizontalScrollView(this);
@@ -1847,7 +1866,7 @@ public class HomeActivity extends AppCompatActivity {
         android.view.Window w = dlg.getWindow();
         if (w != null) {
             w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
-            w.setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.9),
+            w.setLayout(Math.min((int) (getResources().getDisplayMetrics().widthPixels * 0.9), dpToPx(720)),
                     android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         final Runnable doSearch = () -> {
