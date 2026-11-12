@@ -91,6 +91,8 @@ public class CloudStreamManager {
     // Stream API 返回的音轨/字幕信息（供对话框显示标签用）
     private List<StreamResponse.AudioStreamInfo> streamAudioTracks;
     private List<StreamResponse.SubtitleStreamInfo> streamSubtitleTracks;
+    /** stream 返回的容器类型（m3u8 表示 HLS，即使播放 URL 不含 .m3u8） */
+    private String lastContainer = "";
 
     // 用户最后一次选择的音轨/字幕标签（供信息面板显示）
     private String lastAudioTrackLabel = "";
@@ -130,7 +132,7 @@ public class CloudStreamManager {
             url = baseUrl + "/v/api/v1/media/range/" + mediaGuid;
             Log.d(TAG, "播放模式: 代理 " + url);
         }
-        boolean hls = url.contains(".m3u8");
+        boolean hls = url.contains(".m3u8") || "m3u8".equalsIgnoreCase(lastContainer);
         if (!hls && !cloudDirectUrl.isEmpty()) {
             hls = isStrmFile;
             Log.d(TAG, "直链模式: isStrm=" + isStrmFile + " useHls=" + hls);
@@ -281,6 +283,7 @@ public class CloudStreamManager {
                                     info.resolution = sd.qualities.get(0).resolution;
                                     info.bitrate = sd.qualities.get(0).bitrate;
                                 }
+                                lastContainer = info.container == null ? "" : info.container;
                                 // 回调 Activity 更新显示信息
                                 cb.onStreamInfoParsed(info);
                             } else {

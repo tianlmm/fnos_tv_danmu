@@ -27,7 +27,66 @@ DPAD 遥控器友好
             android:orientation="vertical"
             android:visibility="visible">
 
+            <LinearLayout
+                android:id="@+id/homeTopBar"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="18dp"
+                android:paddingRight="18dp">
+
+                <TextView
+                    android:id="@+id/tvHomeTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="飞牛影视"
+                    android:textColor="#F5F5F5"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btnHomeSearch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginRight="10dp"
+                    android:background="@drawable/bg_chip"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp"
+                    android:text="🔍 搜索"
+                    android:textColor="#DDDDDD"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvHomeClock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#9E9E9E"
+                    android:textSize="15sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <HorizontalScrollView
+                android:id="@+id/libTabScroll"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/libTabRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp" />
+            </HorizontalScrollView>
+
             <ScrollView
+                android:id="@+id/homeScroll"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:fillViewport="true"
@@ -436,6 +495,19 @@ DPAD 遥控器友好
                         android:background="@drawable/bg_btn_primary"
                         android:focusable="true"
                         android:text="退出登录"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text_white"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <Button
+                        android:id="@+id/btnExportLog"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_btn_primary"
+                        android:focusable="true"
+                        android:text="导出日志（反馈问题用）"
                         android:textAllCaps="false"
                         android:textColor="@color/text_white"
                         android:textSize="15sp"

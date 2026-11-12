@@ -36,6 +36,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     private PlayerView playerView;
     private SimpleExoPlayer player;
+    private long lastErrToastMs = 0;
     private TextView tvBuffering, tvTime, infoText;
     private SeekBar seekBar;
     private Button btnPlayPause, btnRewind, btnForward, btnSpeed, btnRatio, btnInfo, btnCloseInfo, btnEpisodeList, btnNextEp, btnBack, btnDanmu, btnHdrToggle, btnQuality;
@@ -107,6 +108,7 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_player);
+        AppLog.init(this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(Color.BLACK);
             getWindow().setNavigationBarColor(Color.BLACK);
@@ -620,7 +622,11 @@ public class PlayerActivity extends AppCompatActivity {
                     sb2.append("\n  ").append(tc.getClass().getSimpleName()).append(": ").append(tc.getMessage());
                     tc = tc.getCause();
                 }
-                Log.e(TAG, sb2.toString());
+                AppLog.e(TAG, sb2.toString());
+                if (System.currentTimeMillis() - lastErrToastMs > 3000) {
+                    lastErrToastMs = System.currentTimeMillis();
+                    Toast.makeText(PlayerActivity.this, "播放错误: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
                 // 视频/音频解码器崩溃 → 自动切软解重试
                 if (!swDecoderTried && e.getMessage() != null
                         && (e.getMessage().contains("MediaCodecVideoRenderer")
@@ -631,6 +637,16 @@ public class PlayerActivity extends AppCompatActivity {
                             .edit().putString("decoder_mode", "software").apply();
                     isHwDecode = false;
                     handler.post(() -> recreatePlayerWithSwDecoder());
+                    return;
+                }
+                // 服务端以 /media/range 形式返回 HLS（fnmedia-ext 等）：URL 不含 .m3u8，
+                // 客户端按后缀判断成了渐进式，必然 Source error。这里按响应 Content-Type 纠正。
+                String ct = OkHttpExoDataSource.lastContentType;
+                if (!useHls && ct != null && ct.toLowerCase().contains("mpegurl")) {
+                    useHls = true;
+                    retryCount = 0;
+                    AppLog.d(TAG, "Content-Type=" + ct + "，切换为 HLS");
+                    switchMediaSource(true);
                     return;
                 }
                 // 按响应码切换
@@ -739,24 +755,39 @@ public class PlayerActivity extends AppCompatActivity {
 
     /** 开始播放（加载到 ExoPlayer） */
     private void startPlayback() {
-        if (mediaGuid == null) return;
-        OkHttpExoDataSource.resetLoadedBytes();
-        CloudStreamManager.PlaybackConfig cfg = cloudStreamManager.getPlaybackConfig(baseUrl, mediaGuid);
-        OkHttpExoDataSource.setChunkedMode(cfg.chunkedModeSize);
-        useHls = cfg.hls;
-        savedPlaybackUrl = cfg.url;
-        com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
-        if (useHls) {
+            if (mediaGuid == null) {
+            Toast.makeText(this, "起播失败：media_guid 为空", Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            if (player == null) {
+                Toast.makeText(this, "起播失败：player 尚未初始化", Toast.LENGTH_LONG).show();
+                return;
+            }
+            OkHttpExoDataSource.resetLoadedBytes();
+            OkHttpExoDataSource.lastContentType = "";
+            CloudStreamManager.PlaybackConfig cfg = cloudStreamManager.getPlaybackConfig(baseUrl, mediaGuid);
+            OkHttpExoDataSource.setChunkedMode(cfg.chunkedModeSize);
+            useHls = cfg.hls;
+            savedPlaybackUrl = cfg.url;
+            AppLog.e(TAG, "起播 URL=" + cfg.url + " hls=" + useHls + " baseUrl=" + baseUrl + " mediaGuid=" + mediaGuid);
+            // 诊断期提示起播地址
+            com.google.android.exoplayer2.upstream.DataSource.Factory f = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
+            if (useHls) {
             player.setMediaSource(new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f).createMediaSource(MediaItem.fromUri(cfg.url)));
             Log.d(TAG, "播放器: HLS");
         } else {
             player.setMediaSource(new com.google.android.exoplayer2.source.ProgressiveMediaSource.Factory(f, new DefaultExtractorsFactory()).createMediaSource(MediaItem.fromUri(cfg.url)));
             Log.d(TAG, "播放器: 渐进式");
         }
-        player.prepare(); player.setPlayWhenReady(true);
-        Log.d(TAG, "startPlayback: parentGuid=" + parentGuid + " episodeLoaded=" + (episodeManager != null && episodeManager.isLoaded()) + " loadingEp=" + (episodeManager != null && episodeManager.isLoading()));
-        if (parentGuid != null && !parentGuid.isEmpty() && episodeManager != null && !episodeManager.isLoaded() && !episodeManager.isLoading())
-            episodeManager.loadList(parentGuid);
+            player.prepare(); player.setPlayWhenReady(true);
+            Log.d(TAG, "startPlayback: parentGuid=" + parentGuid + " episodeLoaded=" + (episodeManager != null && episodeManager.isLoaded()) + " loadingEp=" + (episodeManager != null && episodeManager.isLoading()));
+            if (parentGuid != null && !parentGuid.isEmpty() && episodeManager != null && !episodeManager.isLoaded() && !episodeManager.isLoading())
+                episodeManager.loadList(parentGuid);
+        } catch (Throwable t) {
+            AppLog.e(TAG, "起播异常", t);
+            Toast.makeText(this, "起播异常: " + t, Toast.LENGTH_LONG).show();
+        }
     }
 
     /** 下载 ASS 字幕 → 合并双语 Dialogue → 保存到缓存 */
@@ -1022,10 +1053,14 @@ public class PlayerActivity extends AppCompatActivity {
     }
 
     private void switchMediaSource(boolean toHls) {
-        if (player == null || !cloudStreamManager.hasDirectUrl()) return;
+        if (player == null) return;
+        // 直链模式用 cloudDirectUrl；普通播放（如 fnmedia-ext 的 /media/range）用 savedPlaybackUrl
+        String src = cloudStreamManager.hasDirectUrl()
+                ? cloudStreamManager.getCloudDirectUrl() : savedPlaybackUrl;
+        if (src == null || src.isEmpty()) return;
+        final String u = src;
         OkHttpExoDataSource.resetLoadedBytes();
         handler.post(() -> {
-            String u = cloudStreamManager.getCloudDirectUrl();
             com.google.android.exoplayer2.upstream.DataSource.Factory f2 = () -> new OkHttpExoDataSource(apiManager.getStreamClient());
             com.google.android.exoplayer2.source.MediaSource ms = toHls
                     ? new com.google.android.exoplayer2.source.hls.HlsMediaSource.Factory(f2).createMediaSource(MediaItem.fromUri(u))

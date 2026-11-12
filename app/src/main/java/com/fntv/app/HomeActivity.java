@@ -38,16 +38,24 @@ public class HomeActivity extends AppCompatActivity {
     private EditText etSearch;
     private boolean isSearching = false;
     private TextView tvSettingUsername, tvSettingServer, tvDecoderValue, tvDanmuUrl;
-    private Button btnLogout, btnFeedback;
+    private Button btnLogout, btnFeedback, btnExportLog;
     private UpdateManager updateManager;
     private RelativeLayout rlDecoderSetting, rlDanmuSetting, rlSeekStep, rlBufferTime;
     private TextView tvSeekStepValue, tvBufferTimeValue;
 
     private int currentTab = 0;
     private final List<MediaDbItem> mediaLibraries = new ArrayList<>();
+    /** 媒体库条目数（/mediadb/sum），用于媒体库列表右侧显示数量 */
+    private final java.util.Map<String, Integer> libCounts = new java.util.HashMap<>();
+    /** 首页分区标题视图，供顶部媒体库标签跳转 */
+    private final java.util.Map<String, View> sectionHeaderViews = new java.util.HashMap<>();
     private boolean showingOverview = true;
     private boolean showingEpisodes = false;
     private boolean loadingPreviews = false;
+    private LinearLayout libTabRow;
+    private HorizontalScrollView libTabScroll;
+    private ScrollView homeScroll;
+    private TextView tvHomeClock, tvHomeTitle;
 
     // 媒体库浏览排序状态
     private String currentBrowseGuid;
@@ -149,8 +157,19 @@ public class HomeActivity extends AppCompatActivity {
         tvLibraryEmpty = findViewById(R.id.tvLibraryEmpty);
         tvSettingUsername = findViewById(R.id.tvSettingUsername);
         tvSettingServer = findViewById(R.id.tvSettingServer);
+        libTabRow = findViewById(R.id.libTabRow);
+        libTabScroll = findViewById(R.id.libTabScroll);
+        homeScroll = findViewById(R.id.homeScroll);
+        tvHomeClock = findViewById(R.id.tvHomeClock);
+        tvHomeTitle = findViewById(R.id.tvHomeTitle);
+        TextView btnHomeSearch = findViewById(R.id.btnHomeSearch);
+        if (btnHomeSearch != null) btnHomeSearch.setOnClickListener(v -> showSearchDialog());
+        startHomeClock();
         tvDecoderValue = findViewById(R.id.tvDecoderValue);
         btnLogout = findViewById(R.id.btnLogout);
+        btnExportLog = findViewById(R.id.btnExportLog);
+        AppLog.init(this);
+        if (btnExportLog != null) btnExportLog.setOnClickListener(v -> showLogDialog());
         Button btnCheckUpdate = findViewById(R.id.btnCheckUpdate);
         updateManager = new UpdateManager(this, btnCheckUpdate, BuildConfig.VERSION_CODE);
         btnFeedback = findViewById(R.id.btnFeedback);
@@ -247,7 +266,10 @@ public class HomeActivity extends AppCompatActivity {
                         && response.body().data != null && !response.body().data.isEmpty()) {
                     mediaLibraries.clear();
                     for (MediaDbItem lib : response.body().data) {
-                        if (!lib.refreshDisabled) mediaLibraries.add(lib);
+                        // fnOS 第三方扩展（如 fnmedia-ext）注入的虚拟媒体库会带
+                        // refresh_disabled=true（表示“不要刷新元数据”），但它仍应展示。
+                        // 原逻辑把这类库整库丢弃，导致首页/媒体库页看不到任何虚拟库。
+                        mediaLibraries.add(lib);
                     }
                     Log.d("Overview", "loaded " + mediaLibraries.size() + " libraries");
                     showOverview();
@@ -289,6 +311,7 @@ public class HomeActivity extends AppCompatActivity {
         java.util.ArrayList<Integer> viewAllIds = new java.util.ArrayList<>();
         for (MediaDbItem lib : mediaLibraries) {
             LinearLayout headerRow = makeLibHeader(lib.guid, lib.title, 0);
+            sectionHeaderViews.put(lib.guid, headerRow);
             moviesContainer.addView(headerRow);
             for (int ci = 0; ci < headerRow.getChildCount(); ci++) {
                 View child = headerRow.getChildAt(ci);
@@ -319,6 +342,55 @@ public class HomeActivity extends AppCompatActivity {
             e.setTextSize(14);
             moviesContainer.addView(e);
         }
+        buildLibTabs();
+    }
+
+    /** 顶部媒体库标签条：点哪个就滚到对应分区 */
+    private void buildLibTabs() {
+        if (libTabRow == null) return;
+        libTabRow.removeAllViews();
+        libTabRow.addView(makeLibChip("全部", () -> {
+            if (homeScroll != null) homeScroll.smoothScrollTo(0, 0);
+        }));
+        for (final MediaDbItem lib : mediaLibraries) {
+            libTabRow.addView(makeLibChip(lib.title, () -> {
+                View h = sectionHeaderViews.get(lib.guid);
+                if (h != null && homeScroll != null) {
+                    homeScroll.smoothScrollTo(0, Math.max(0, h.getTop()));
+                }
+            }));
+        }
+    }
+
+    private View makeLibChip(String text, final Runnable onClick) {
+        TextView tv = new TextView(this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.setMargins(dpToPx(12), 0, dpToPx(12), 0);
+        tv.setLayoutParams(lp);
+        tv.setText(text);
+        tv.setTextSize(16);
+        tv.setGravity(Gravity.CENTER_VERTICAL);
+        tv.setTextColor(0xFF9E9E9E);
+        tv.setFocusable(true);
+        tv.setOnClickListener(v -> onClick.run());
+        tv.setOnFocusChangeListener((v, f) -> {
+            ((TextView) v).setTextColor(f ? 0xFFFFFFFF : 0xFF9E9E9E);
+            ((TextView) v).setTypeface(f ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        });
+        return tv;
+    }
+
+    private void startHomeClock() {
+        if (tvHomeClock == null) return;
+        final Handler h = new Handler(Looper.getMainLooper());
+        h.post(new Runnable() {
+            @Override public void run() {
+                tvHomeClock.setText(new java.text.SimpleDateFormat("HH:mm",
+                        java.util.Locale.getDefault()).format(new java.util.Date()));
+                h.postDelayed(this, 30000);
+            }
+        });
     }
 
     /** 加载各媒体库预览 */
@@ -334,8 +406,12 @@ public class HomeActivity extends AppCompatActivity {
                 public void onResponse(Call<ApiResponse<ItemListResponse>> call,
                                        Response<ApiResponse<ItemListResponse>> response) {
                     if (!response.isSuccessful() || response.body() == null || response.body().code != 0
-                            || response.body().data == null || response.body().data.list == null
-                            || response.body().data.list.isEmpty()) return;
+                            || response.body().data == null || response.body().data.list == null) return;
+                    if (response.body().data.list.isEmpty()) {
+                        // 空媒体库（如小雅系列 0 条）也要保留分组，否则首页只剩标题、看着像"消失"
+                        fillPreviewEmpty(guid);
+                        return;
+                    }
                     // 取前6个填到预览容器
                     List<PlayListItem> items = response.body().data.list;
                     if (items.size() > 20) items = items.subList(0, 20);
@@ -347,6 +423,24 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     /** 填充预览卡片（先清空再填充，防止重复） */
+
+    /** 空媒体库占位，保证 0 条的库在首页也可见 */
+    private void fillPreviewEmpty(String libGuid) {
+        for (int i = 0; i < moviesContainer.getChildCount(); i++) {
+            View v = moviesContainer.getChildAt(i);
+            if (v instanceof LinearLayout && ("preview_" + libGuid).equals(v.getTag())) {
+                LinearLayout box = (LinearLayout) v;
+                box.removeAllViews();
+                TextView t = new TextView(this);
+                t.setText("暂无内容 · 点「查看全部 ›」进入");
+                t.setTextColor(0xFF808080);
+                t.setTextSize(14);
+                t.setPadding(18, 6, 18, 18);
+                box.addView(t);
+                break;
+            }
+        }
+    }
 
     private void fillPreview(String libGuid, List<PlayListItem> items) {
         for (int i = 0; i < moviesContainer.getChildCount(); i++) {
@@ -367,7 +461,7 @@ public class HomeActivity extends AppCompatActivity {
         headerRow.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setPadding(6, 24, 6, 18);
+        headerRow.setPadding(6, 26, 6, 12);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
         headerRow.setMinimumHeight(68);
         headerRow.setId(View.generateViewId());
@@ -381,27 +475,14 @@ public class HomeActivity extends AppCompatActivity {
         header.setTypeface(Typeface.DEFAULT_BOLD);
         headerRow.addView(header);
 
-        Button viewAll = new Button(this);
-        viewAll.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, 68));
-        viewAll.setBackgroundResource(R.drawable.bg_input);
-        viewAll.setText("查看全部 ›");
-        viewAll.setTextColor(0xFFB0B0B0);
-        viewAll.setTextSize(14);
-        viewAll.setFocusable(true);
-        viewAll.setId(View.generateViewId());
-        viewAll.setPadding(24, 0, 24, 0);
-        viewAll.setOnClickListener(v -> browseItems(libGuid, libTitle));
-        viewAll.setOnFocusChangeListener((v, hasFocus) -> {
-            viewAll.setTextColor(hasFocus ? 0xFF81C784 : 0xFFB0B0B0);
-            viewAll.setBackgroundColor(hasFocus ? 0x44FFFFFF : 0x00000000);
-        });
-        headerRow.setOnClickListener(v -> browseItems(libGuid, libTitle));
-        headerRow.setFocusable(true);
-        headerRow.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) viewAll.requestFocus();
-        });
-        headerRow.addView(viewAll);
+        TextView arrow = new TextView(this);
+        arrow.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        arrow.setText("›");
+        arrow.setTextColor(0xFF9E9E9E);
+        arrow.setTextSize(24);
+        arrow.setPadding(dpToPx(8), 0, dpToPx(4), 0);
+        headerRow.addView(arrow);
         return headerRow;
     }
 
@@ -439,20 +520,28 @@ public class HomeActivity extends AppCompatActivity {
         h.setTypeface(Typeface.DEFAULT_BOLD);
         cont.addView(h);
 
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int cardW = (int) (screenW * (landscape ? 0.13f : 0.27f));
+        if (cardW < dpToPx(120)) cardW = dpToPx(120);
+        int posterH = cardW * 4 / 3;
+        int gap = dpToPx(8);
+
         HorizontalScrollView hsv = new HorizontalScrollView(this);
         hsv.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 410));
-        hsv.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        hsv.setHorizontalScrollBarEnabled(false);
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(10, 8, 10, 8);
+        row.setPadding(dpToPx(14), dpToPx(2), dpToPx(14), dpToPx(10));
 
         for (PlayListItem item : items) {
-            View card = makeContinueCard(item);
+            View card = makeContinueCard(item, cardW, posterH);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    220, 380);
-            lp.setMargins(10, 0, 10, 0);
+                    cardW, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.rightMargin = gap;
             card.setLayoutParams(lp);
             if (viewAllId > 0) card.setNextFocusDownId(viewAllId);
             row.addView(card);
@@ -481,7 +570,7 @@ public class HomeActivity extends AppCompatActivity {
         return item.title != null ? item.title : "";
     }
 
-    private View makeContinueCard(PlayListItem item) {
+    private View makeContinueCard(PlayListItem item, int cardW, int posterH) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setBackgroundResource(R.drawable.bg_media_card);
@@ -490,7 +579,7 @@ public class HomeActivity extends AppCompatActivity {
 
         RoundedImageView poster = new RoundedImageView(this);
         poster.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 280));
+                ViewGroup.LayoutParams.MATCH_PARENT, posterH));
         poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
         poster.setCornerRadius(10);
         poster.setBackgroundColor(0xFF333333);
@@ -522,12 +611,12 @@ public class HomeActivity extends AppCompatActivity {
 
         TextView title = new TextView(this);
         title.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 85));
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(46)));
         title.setSingleLine(true);
         title.setHorizontallyScrolling(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
         title.setMarqueeRepeatLimit(-1);
-        title.setTextSize(13);
+        title.setTextSize(14);
         title.setTextColor(0xFFEEEEEE);
         title.setGravity(Gravity.CENTER_VERTICAL);
         title.setPadding(4, 0, 4, 0);
@@ -606,136 +695,102 @@ public class HomeActivity extends AppCompatActivity {
     // ==================== 横向滚动卡片 ====================
 
 
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    /** 官方风格：每个分区一排大卡片，左右滑动（Netflix 式单行横滑） */
     private void populateGrid(LinearLayout cont, List<PlayListItem> items) {
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int cardW = (int) (screenW * (landscape ? 0.13f : 0.27f));
+        if (cardW < dpToPx(120)) cardW = dpToPx(120);
+        int posterH = cardW * 4 / 3;  // 3:4，比 2:3 矮一些，避免卡片显得拉长
+        int gap = dpToPx(8);
+
         HorizontalScrollView hsv = new HorizontalScrollView(this);
-        hsv.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 410));
-        hsv.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        hsv.setLayoutParams(hlp);
+        hsv.setHorizontalScrollBarEnabled(false);
+        hsv.setClipToPadding(false);
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(12, 8, 12, 8);
-
-        // 找到 cont 前后的 headerRow，取 viewAll 按钮
-        View focusUpTarget = null;
-        View focusDownTarget = null;
-        if (cont.getParent() instanceof ViewGroup) {
-            ViewGroup parent = (ViewGroup) cont.getParent();
-            int idx = parent.indexOfChild(cont);
-            // 前面的 headerRow（当前分类的查看全部）
-            for (int si = idx - 1; si >= 0; si--) {
-                View v = parent.getChildAt(si);
-                if (v instanceof ViewGroup) {
-                    for (int ci = 0; ci < ((ViewGroup) v).getChildCount(); ci++) {
-                        View child = ((ViewGroup) v).getChildAt(ci);
-                        if (child instanceof Button && child.isFocusable()) {
-                            focusUpTarget = child;
-                            break;
-                        }
-                    }
-                    if (focusUpTarget != null) break;
-                }
-            }
-            // 后面的 headerRow（下一个分类的查看全部）
-            for (int si = idx + 1; si < parent.getChildCount(); si++) {
-                View v = parent.getChildAt(si);
-                if (v instanceof ViewGroup) {
-                    for (int ci = 0; ci < ((ViewGroup) v).getChildCount(); ci++) {
-                        View child = ((ViewGroup) v).getChildAt(ci);
-                        if (child instanceof Button && child.isFocusable()) {
-                            focusDownTarget = child;
-                            break;
-                        }
-                    }
-                    if (focusDownTarget != null) break;
-                }
-            }
-        }
+        row.setPadding(dpToPx(14), dpToPx(2), dpToPx(14), dpToPx(14));
 
         for (int i = 0; i < items.size(); i++) {
-            View card = makeItemCard(items.get(i));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(220, 380);
-            lp.setMargins(10, 0, 10, 0);
+            View card = makeItemCard(items.get(i), cardW, posterH);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cardW,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.rightMargin = gap;
             card.setLayoutParams(lp);
-            // 卡片：↑到当前查看全部，↓到下一个查看全部
-            if (focusUpTarget != null) card.setNextFocusUpId(focusUpTarget.getId());
-            if (focusDownTarget != null) card.setNextFocusDownId(focusDownTarget.getId());
             row.addView(card);
         }
 
         hsv.addView(row);
         cont.addView(hsv);
-
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                loadImagesLazily(hsv, 0);
-            }
-        });
+        final HorizontalScrollView hsvRef = hsv;
+        new Handler(Looper.getMainLooper()).post(() -> loadImagesLazily(hsvRef, 0));
     }
 
-    /** 竖版卡片（2:3 比例适配海报图，图片为主，文字一条） */
-
-    private View makeItemCard(PlayListItem item) {
+    private View makeItemCard(PlayListItem item, int cardW, int posterH) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundResource(R.drawable.bg_media_card);
-        card.setPadding(6, 6, 6, 6);
         card.setFocusable(true);
+        card.setBackgroundResource(R.drawable.bg_media_card);
+        card.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(6));
 
-        // 海报 — 16:9 比例，等页面显示完后统一逐张加载
         RoundedImageView iv = new RoundedImageView(this);
         iv.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 280));
-        iv.setScaleType(ImageView.ScaleType.FIT_XY);
-        iv.setBackgroundColor(0xFF333333);
-        iv.setCornerRadius(10);
+                ViewGroup.LayoutParams.MATCH_PARENT, posterH));
+        iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        iv.setBackgroundColor(0xFF2A2A2A);
+        iv.setCornerRadius(8);
         String imgUrl = makePosterUrl(item.poster);
-        if (imgUrl != null) { iv.setTag(imgUrl); }
+        if (imgUrl != null) iv.setTag(imgUrl);
         card.addView(iv);
 
-        // 底部文字条：类型 + 标题
-        LinearLayout textBar = new LinearLayout(this);
-        textBar.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 88));
-        textBar.setOrientation(LinearLayout.VERTICAL);
-        textBar.setGravity(Gravity.CENTER_VERTICAL);
-        textBar.setPadding(0, 4, 0, 4);
-
-        TextView tag = new TextView(this);
-        tag.setTextSize(9);
-        tag.setTextColor(0xFF78909C);
-        String t = item.type;
-        if ("TV".equals(t)) t = "剧集";
-        else if ("Movie".equals(t)) t = "电影";
-        else if ("Directory".equals(t)) t = "文件夹";
-        else if ("Video".equals(t)) t = "视频";
-        tag.setText(t);
-        textBar.addView(tag);
-
-        final TextView title = new TextView(this);
-        title.setSingleLine(true);
-        title.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-        title.setMarqueeRepeatLimit(-1);
-        title.setTextSize(11);
+        TextView title = new TextView(this);
+        title.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        title.setTextSize(14);
         title.setTextColor(0xFFEEEEEE);
+        title.setMaxLines(2);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setPadding(dpToPx(2), dpToPx(6), dpToPx(2), 0);
         title.setText(item.title != null ? item.title : "未知");
-        textBar.addView(title);
+        card.addView(title);
 
-        card.addView(textBar);
-
-        card.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View v, boolean hasFocus) {
-                title.setSelected(hasFocus);
-            }
-        });
+        TextView meta = new TextView(this);
+        meta.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        meta.setTextSize(11);
+        meta.setTextColor(0xFF8A8A8A);
+        meta.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), 0);
+        String mv = item.voteAverage;
+        String m = "";
+        if (mv != null && !mv.isEmpty() && !"0".equals(mv) && !"0.0".equals(mv)) m = "★ " + mv;
+        if ("TV".equals(item.type)) m = m.isEmpty() ? "剧集" : m + " · 剧集";
+        else if ("Movie".equals(item.type)) m = m.isEmpty() ? "电影" : m + " · 电影";
+        meta.setText(m);
+        if (m.isEmpty()) meta.setVisibility(View.GONE);
+        card.addView(meta);
 
         card.setTag(item);
         card.setOnClickListener(v -> onItemClick((PlayListItem) card.getTag()));
         return card;
     }
 
+
+    /** 兼容旧调用：按 3 列默认尺寸生成卡片 */
+    private View makeItemCard(PlayListItem item) {
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int cardW = (screenW - dpToPx(28) - dpToPx(16)) / 3;
+        if (cardW < dpToPx(90)) cardW = dpToPx(90);
+        return makeItemCard(item, cardW, cardW * 3 / 2);
+    }
 
     private void onItemClick(PlayListItem item) {
         showDetail(item);  // 全部走 getPlayInfo
@@ -1729,10 +1784,12 @@ public class HomeActivity extends AppCompatActivity {
                     mediaLibraries.clear();
                     List<MediaDbItem> filteredLibs = new ArrayList<>();
                     for (MediaDbItem lib : response.body().data) {
-                        if (!lib.refreshDisabled) filteredLibs.add(lib);
+                        // 同上：refresh_disabled 只表示禁止刷新，不代表隐藏。
+                        filteredLibs.add(lib);
                     }
                     mediaLibraries.addAll(filteredLibs);
                     populateLibGrid(libraryContainer, filteredLibs);
+                    loadLibCounts(filteredLibs);
                     return;
                 }
                 tvLibraryEmpty.setVisibility(View.VISIBLE);
@@ -1770,6 +1827,46 @@ public class HomeActivity extends AppCompatActivity {
         if (imm != null) imm.hideSoftInputFromWindow(etSearch.getWindowToken(), 0);
     }
 
+    /** 首页搜索入口：弹窗输入片名，结果在「媒体库」页展示 */
+    private void showSearchDialog() {
+        final android.view.View v = android.view.LayoutInflater.from(this)
+                .inflate(R.layout.dialog_search, null);
+        final android.widget.EditText input = v.findViewById(R.id.etSearchInput);
+        final android.app.Dialog dlg = new android.app.Dialog(this, R.style.DarkDialog);
+        dlg.setContentView(v);
+        android.view.Window w = dlg.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+            w.setLayout((int) (getResources().getDisplayMetrics().widthPixels * 0.9),
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        final Runnable doSearch = () -> {
+            String q = input.getText().toString().trim();
+            if (q.isEmpty()) return;
+            dlg.dismiss();
+            switchTab(1);
+            etSearch.setText(q);
+            performSearch(q);
+        };
+        v.findViewById(R.id.btnSearchCancel).setOnClickListener(x -> dlg.dismiss());
+        v.findViewById(R.id.btnSearchGo).setOnClickListener(x -> doSearch.run());
+        input.setOnEditorActionListener((tv, actionId, ev) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                    || actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                doSearch.run();
+                return true;
+            }
+            return false;
+        });
+        dlg.setOnShowListener(d -> {
+            input.requestFocus();
+            android.view.inputmethod.InputMethodManager im =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (im != null) im.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+        });
+        dlg.show();
+    }
+
     private void performSearch(String query) {
         if (query.isEmpty()) {
             clearSearch();
@@ -1804,40 +1901,48 @@ public class HomeActivity extends AppCompatActivity {
 
     private void showSearchResults(List<PlayListItem> results) {
         libraryContainer.removeAllViews();
-        float density = getResources().getDisplayMetrics().density;
-        int cols = Math.max(3, (int) (getResources().getDisplayMetrics().widthPixels / (130 * density)));
-        for (int idx = 0; idx < results.size(); idx += cols) {
+        String q = etSearch.getText().toString().trim();
+
+        TextView head = new TextView(this);
+        head.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        head.setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(10));
+        head.setText("「" + q + "」· " + results.size() + " 个结果");
+        head.setTextColor(0xFFEEEEEE);
+        head.setTextSize(16);
+        head.setTypeface(Typeface.DEFAULT_BOLD);
+        libraryContainer.addView(head);
+
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int perRow = landscape ? 6 : 3;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        int hpad = dpToPx(14), gap = dpToPx(8);
+        int cardW = (screenW - hpad * 2 - gap * (perRow - 1)) / perRow;
+        if (cardW < dpToPx(90)) cardW = dpToPx(90);
+        int posterH = cardW * 4 / 3;
+
+        for (int idx = 0; idx < results.size(); idx += perRow) {
             LinearLayout row = new LinearLayout(this);
             row.setLayoutParams(new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             row.setOrientation(LinearLayout.HORIZONTAL);
-            int inRow = Math.min(cols, results.size() - idx);
-            for (int c = 0; c < cols && idx + c < results.size(); c++) {
-                PlayListItem item = results.get(idx + c);
-                View card = makeItemCard(item);
-                if (card instanceof ViewGroup) {
-                    View ch = ((ViewGroup) card).getChildAt(0);
-                    if (ch instanceof ImageView) {
-                        int posterH = Math.min(550, (int) (getResources().getDisplayMetrics().widthPixels / cols * 1.5));
-                        ch.setLayoutParams(new LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, posterH));
-                    }
+            row.setPadding(hpad, 0, hpad, gap);
+            for (int c = 0; c < perRow; c++) {
+                int i = idx + c;
+                View child;
+                if (i < results.size()) {
+                    child = makeItemCard(results.get(i), cardW, posterH);
+                } else {
+                    child = new View(this);
                 }
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-                lp.rightMargin = 6;
-                lp.leftMargin = 6;
-                card.setLayoutParams(lp);
-                row.addView(card);
-            }
-            for (int e = inRow; e < cols; e++) {
-                View spacer = new View(this);
-                spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
-                row.addView(spacer);
+                        cardW, ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (c < perRow - 1) lp.rightMargin = gap;
+                child.setLayoutParams(lp);
+                row.addView(child);
             }
             libraryContainer.addView(row);
-            libraryContainer.addView(makeSpacer(12));
         }
         new Handler(Looper.getMainLooper()).post(() -> loadImagesLazily(libraryContainer, 0));
     }
@@ -1863,6 +1968,22 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
+    /** 拉取媒体库条目数并刷新列表右侧数字 */
+    private void loadLibCounts(final List<MediaDbItem> libs) {
+        apiManager.getApi().getMediaDbSum().enqueue(new Callback<ApiResponse<Map<String, Integer>>>() {
+            @Override
+            public void onResponse(Call<ApiResponse<Map<String, Integer>>> call,
+                                   Response<ApiResponse<Map<String, Integer>>> response) {
+                if (!response.isSuccessful() || response.body() == null
+                        || response.body().data == null) return;
+                libCounts.clear();
+                libCounts.putAll(response.body().data);
+                populateLibGrid(libraryContainer, libs);
+            }
+            @Override public void onFailure(Call<ApiResponse<Map<String, Integer>>> call, Throwable t) {}
+        });
+    }
+
     private void populateLibGrid(LinearLayout cont, List<MediaDbItem> libs) {
         cont.removeAllViews();
         for (int i = 0; i < libs.size(); i++) {
@@ -1876,9 +1997,9 @@ public class HomeActivity extends AppCompatActivity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setBackgroundResource(R.drawable.bg_media_card);
-        card.setPadding(16, 18, 16, 18);
+        card.setPadding(20, 20, 20, 20);
         card.setFocusable(true);
-        card.setMinimumHeight(56);
+        card.setMinimumHeight(68);
 
         LinearLayout text = new LinearLayout(this);
         text.setLayoutParams(new LinearLayout.LayoutParams(
@@ -1887,15 +2008,18 @@ public class HomeActivity extends AppCompatActivity {
         text.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = new TextView(this);
-        title.setTextSize(16);
-        title.setTextColor(0xFFEEEEEE);
+        title.setTextSize(18);
+        title.setTextColor(0xFFF5F5F5);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setText(lib.title);
         text.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setTextSize(12);
-        sub.setTextColor(0xFF808080);
-        sub.setText("分类: " + (lib.category != null ? lib.category : "未分类"));
+        sub.setTextSize(13);
+        sub.setTextColor(0xFF9E9E9E);
+        Integer cnt = libCounts.get(lib.guid);
+        sub.setText(cnt != null ? (cnt + " 部 · " + (lib.category != null ? lib.category : "未分类"))
+                                : (lib.category != null ? lib.category : "未分类"));
         text.addView(sub);
 
         card.addView(text);
@@ -1921,6 +2045,45 @@ public class HomeActivity extends AppCompatActivity {
 
     // ==================== 设置 ====================
 
+
+    /** 日志对话框：可直接查看，也可分享日志文件。 */
+    private void showLogDialog() {
+        final android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        final TextView tv = new TextView(this);
+        tv.setText(AppLog.dump());
+        tv.setTextSize(11);
+        tv.setTextIsSelectable(true);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE);
+        tv.setTextColor(0xFFDDDDDD);
+        tv.setPadding(18, 14, 18, 14);
+        sv.addView(tv);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("运行日志")
+                .setView(sv)
+                .setPositiveButton("分享日志文件", (d, w) -> shareLog())
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private void shareLog() {
+        try {
+            java.io.File f = AppLog.file();
+            if (f == null || !f.exists()) {
+                Toast.makeText(this, "暂无日志文件，请先复现一次问题", Toast.LENGTH_LONG).show();
+                return;
+            }
+            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".fileprovider", f);
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_STREAM, uri);
+            i.putExtra(Intent.EXTRA_SUBJECT, "FNTV 运行日志");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(i, "分享日志"));
+        } catch (Throwable t) {
+            Toast.makeText(this, "导出失败: " + t, Toast.LENGTH_LONG).show();
+        }
+    }
 
     private void setupSettings() {
         tvSettingUsername.setText("用户名: " + prefs.getString("user", ""));
@@ -2218,7 +2381,7 @@ public class HomeActivity extends AppCompatActivity {
         headerRow.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setPadding(6, 24, 6, 18);
+        headerRow.setPadding(6, 26, 6, 12);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
         headerRow.setMinimumHeight(68);
         headerRow.setId(View.generateViewId());

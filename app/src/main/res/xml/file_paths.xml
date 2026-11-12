@@ -2,4 +2,5 @@
 <paths>
     <external-files-path name="download" path="download/" />
     <cache-path name="cache" path="/" />
+    <external-files-path name="logs" path="logs/" />
 </paths>

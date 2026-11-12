@@ -48,6 +48,12 @@ public class MainActivity extends AppCompatActivity {
     private float density;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        AppLog.init(this);
+        final Thread.UncaughtExceptionHandler prevHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((th, ex) -> {
+            AppLog.e("CRASH", "未捕获异常 in " + th.getName(), ex);
+            if (prevHandler != null) prevHandler.uncaughtException(th, ex);
+        });
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 

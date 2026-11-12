@@ -4,6 +4,7 @@ import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import java.security.cert.X509Certificate;
+import com.fntv.app.AppLog;
 import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -38,6 +39,20 @@ public class FnApiManager {
 
             OkHttpClient.Builder builder = new OkHttpClient.Builder()
                     .addInterceptor(authInterceptor)
+                    .addInterceptor(chain -> {
+                        okhttp3.Request rq = chain.request();
+                        long t0 = System.currentTimeMillis();
+                        try {
+                            okhttp3.Response rs = chain.proceed(rq);
+                            AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
+                                    + " " + rs.header("Content-Type")
+                                    + " " + (System.currentTimeMillis() - t0) + "ms");
+                            return rs;
+                        } catch (java.io.IOException ioe) {
+                            AppLog.e("HTTP", rq.method() + " " + rq.url() + " 失败: " + ioe);
+                            throw ioe;
+                        }
+                    })
                     .sslSocketFactory(sslContext.getSocketFactory(), trustAll)
                     .hostnameVerifier(TRUST_ALL_HOSTS);
             if (streaming) {
@@ -57,7 +72,21 @@ public class FnApiManager {
             return builder.build();
         } catch (Exception e) {
             OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(authInterceptor)
-                    .hostnameVerifier(TRUST_ALL_HOSTS);
+                    .hostnameVerifier(TRUST_ALL_HOSTS)                    .addInterceptor(chain -> {
+                        okhttp3.Request rq = chain.request();
+                        long t0 = System.currentTimeMillis();
+                        try {
+                            okhttp3.Response rs = chain.proceed(rq);
+                            AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
+                                    + " " + rs.header("Content-Type")
+                                    + " " + (System.currentTimeMillis() - t0) + "ms");
+                            return rs;
+                        } catch (java.io.IOException ioe) {
+                            AppLog.e("HTTP", rq.method() + " " + rq.url() + " 失败: " + ioe);
+                            throw ioe;
+                        }
+                    })
+;
             if (streaming) {
                 builder.connectTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS)
                         .readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS);
