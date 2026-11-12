@@ -52,6 +52,7 @@ public class HomeActivity extends AppCompatActivity {
     private boolean showingOverview = true;
     private boolean showingEpisodes = false;
     private boolean loadingPreviews = false;
+    private boolean overviewLoading = false;
     private LinearLayout libTabRow;
     private HorizontalScrollView libTabScroll;
     private ScrollView homeScroll;
@@ -236,6 +237,8 @@ public class HomeActivity extends AppCompatActivity {
 
 
     private void loadOverview() {
+        if (overviewLoading) return;   // onCreate / onResume 同时触发时只发一次
+        overviewLoading = true;
         Log.d("Overview", "loadOverview start  t=" + (System.currentTimeMillis() - t0) + "ms");
         showingOverview = true;
         overviewBuilt = false;
@@ -276,9 +279,11 @@ public class HomeActivity extends AppCompatActivity {
                 } else {
                     tvMoviesLoading.setVisibility(View.GONE);
                 }
+                overviewLoading = false;
             }
             @Override
             public void onFailure(Call<ApiResponse<List<MediaDbItem>>> call, Throwable t) {
+                overviewLoading = false;
                 tvMoviesLoading.setVisibility(View.GONE);
                 Log.e("Overview", "getMediaDbList onFailure: " + t.getMessage() + " t=" + (System.currentTimeMillis() - t0) + "ms");
             }
@@ -395,7 +400,15 @@ public class HomeActivity extends AppCompatActivity {
     private void loadAllPreviews() {
         if (loadingPreviews) return;
         loadingPreviews = true;
-        for (final MediaDbItem lib : mediaLibraries) {
+        // 错开 140ms 逐个发，避免一次性 14 个 item/list 把服务端和日志压满
+        for (int i = 0; i < mediaLibraries.size(); i++) {
+            final MediaDbItem lib = mediaLibraries.get(i);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> requestPreview(lib), i * 140L);
+        }
+    }
+
+    private void requestPreview(final MediaDbItem lib) {
+        {
             final String guid = lib.guid;
             apiManager.getApi().getItemList(ItemListRequest.browseLibrary(guid))
                 .enqueue(new Callback<ApiResponse<ItemListResponse>>() {

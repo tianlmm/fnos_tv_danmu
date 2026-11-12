@@ -1,7 +1,7 @@
 {
-  "versionCode": 42,
-  "versionName": "1.3.2",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.2/FNTV_1.3.2.apk",
-  "changelog": "1.成功加载的图片不再写入日志，避免一页 100+ 张把日志刷满\n2.404/解码失败的海报做负缓存，不再反复请求\n3.日志仍保持 512KB 上限、最新在最上面",
+  "versionCode": 43,
+  "versionName": "1.3.3",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.3/FNTV_1.3.3.apk",
+  "changelog": "1.首页预览改为错峰加载（每 140ms 一个），不再一次性并发 14 个 item/list\n2.修复启动时 mediadb/list、play/list 重复请求\n3.在线播放（HLS）保持 1.3.2 的修复",
   "forceUpdate": false
 }
