@@ -19,10 +19,11 @@
     </style>
 
     <!-- 深色对话框主题 -->
-    <style name="DarkDialog" parent="Theme.AppCompat.Dialog">
-        <item name="android:windowBackground">@color/bg_card</item>
+    <style name="DarkDialog" parent="Theme.AppCompat.Light.Dialog">
+        <item name="android:windowBackground">@color/dialog_bg</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
 
     <!-- 遥控器焦点高亮：配合 ?attr/selectableItemBackground 默认有涟漪/高亮 -->

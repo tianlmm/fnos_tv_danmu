@@ -563,7 +563,7 @@ DPAD 遥控器友好
         android:id="@+id/tabBar"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:background="@color/bg_dark"
+        android:background="@color/tab_bar_bg"
         android:gravity="center"
         android:orientation="horizontal"
         android:paddingLeft="6dp"

@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="搜索影视"
-        android:textColor="#F5F5F5"
+        android:textColor="@color/text_primary"
         android:textSize="20sp"
         android:textStyle="bold" />
 
@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="输入片名、演员，结果会显示在「媒体库」页"
-        android:textColor="#8A8A8A"
+        android:textColor="@color/text_secondary"
         android:textSize="12sp" />
 
     <EditText
@@ -34,8 +34,8 @@
         android:paddingLeft="16dp"
         android:paddingRight="16dp"
         android:singleLine="true"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#888888"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
         android:textSize="16sp" />
 
     <LinearLayout
@@ -52,7 +52,7 @@
             android:background="@drawable/bg_input"
             android:text="取消"
             android:textAllCaps="false"
-            android:textColor="#DDDDDD"
+            android:textColor="@color/text_primary"
             android:textSize="15sp" />
 
         <Button
@@ -63,7 +63,7 @@
             android:background="@drawable/bg_btn_primary"
             android:text="搜索"
             android:textAllCaps="false"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/text_primary"
             android:textSize="15sp" />
     </LinearLayout>
 </LinearLayout>

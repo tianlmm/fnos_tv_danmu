@@ -27,4 +27,9 @@
     <color name="error">#FFE57373</color>
 
     <color name="transparent">#00000000</color>
+    <color name="tab_bar_bg">#FF1A1A1A</color>
+    <color name="tab_sel_bg">#FF37474F</color>
+    <color name="tab_sel_stroke">#FF81C784</color>
+    <color name="dialog_bg">#FF2A2A2A</color>
+    <color name="dialog_stroke">#33FFFFFF</color>
 </resources>

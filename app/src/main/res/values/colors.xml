@@ -32,4 +32,9 @@
     <color name="error">#FFC62828</color>
 
     <color name="transparent">#00000000</color>
+    <color name="tab_bar_bg">#FFFFFFFF</color>
+    <color name="tab_sel_bg">#FFE8EEFF</color>
+    <color name="tab_sel_stroke">#FF3370FF</color>
+    <color name="dialog_bg">#FFFFFFFF</color>
+    <color name="dialog_stroke">#FFE0E0E6</color>
 </resources>

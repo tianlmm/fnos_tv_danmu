@@ -1,7 +1,7 @@
 {
-  "versionCode": 51,
-  "versionName": "1.4.0",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.0/FNTV_1.4.0.apk",
-  "changelog": "1.新增白天/夜间主题：设置 → 外观 可切换「跟随系统 / 白天 / 夜间」\n2.修复首页各分区标题无法点击、进不去该媒体库的问题\n3.播放器固定深色，观影不受主题影响",
+  "versionCode": 52,
+  "versionName": "1.4.1",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.1/FNTV_1.4.1.apk",
+  "changelog": "1.白天模式下弹窗文字看不见：对话框主题改为昼/夜两套，白天用浅色弹窗+深色文字\n2.底部菜单栏配色修正：白天为白底+浅蓝选中项+深色文字，夜间保持深色\n3.搜索弹窗同步改为跟随主题",
   "forceUpdate": false
 }
