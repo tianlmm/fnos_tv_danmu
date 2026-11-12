@@ -22,6 +22,9 @@ public class SimpleImageLoader {
     /** 内存缓存：取可用堆的 1/8，上限 96MB（海报多，缓存太小会导致切页重复加载） */
     private static final int CACHE_BYTES = Math.min(96 * 1024 * 1024,
             (int) Math.min(Integer.MAX_VALUE, Runtime.getRuntime().maxMemory() / 8));
+    /** 404/解码失败的图片记下来，避免反复请求 */
+    private static final java.util.Set<String> failed =
+            java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
     private static final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(CACHE_BYTES) {
         @Override
         protected int sizeOf(String key, Bitmap bitmap) {
@@ -33,6 +36,11 @@ public class SimpleImageLoader {
     public static void load(String url, ImageView view, OkHttpClient client) {
         if (url == null || url.isEmpty()) {
             view.setImageBitmap(null);
+            view.setBackgroundColor(0xFF333333);
+            return;
+        }
+
+        if (failed.contains(url)) {
             view.setBackgroundColor(0xFF333333);
             return;
         }
@@ -79,7 +87,7 @@ public class SimpleImageLoader {
                 long len = response.body() != null ? response.body().contentLength() : -1;
                 // Log.d(TAG, "HTTP " + code + " type=" + contentType + " len=" + len + " " + urlStr);
 
-                if (code != 200) return null;
+                if (code != 200) { failed.add(urlStr); return null; }
 
                 // 不是图片就打印并跳过
                 if (contentType != null && !contentType.contains("image")) {
@@ -105,10 +113,12 @@ public class SimpleImageLoader {
                     cache.put(urlStr, bitmap);
                     Log.d(TAG, "OK (" + bitmap.getWidth() + "x" + bitmap.getHeight() + ")");
                 } else {
+                    failed.add(urlStr);
                     Log.e(TAG, "DECODE_FAILED");
                 }
                 return bitmap;
             } catch (Exception e) {
+                failed.add(params[0]);
                 Log.e(TAG, "FAIL: " + e.getMessage());
                 return null;
             }

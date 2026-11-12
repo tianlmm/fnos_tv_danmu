@@ -45,9 +45,13 @@ public class FnApiManager {
                         long t0 = System.currentTimeMillis();
                         try {
                             okhttp3.Response rs = chain.proceed(rq);
-                            AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
-                                    + " " + rs.header("Content-Type")
-                                    + " " + (System.currentTimeMillis() - t0) + "ms");
+                            boolean isImage = rq.url().encodedPath().contains("/sys/img");
+                            // 图片请求太多，成功的就不写日志（一页 100+ 张会瞬间冲满日志上限）
+                            if (!isImage || rs.code() != 200) {
+                                AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
+                                        + " " + rs.header("Content-Type")
+                                        + " " + (System.currentTimeMillis() - t0) + "ms");
+                            }
                             return rs;
                         } catch (java.io.IOException ioe) {
                             AppLog.e("HTTP", rq.method() + " " + rq.url() + " 失败: " + ioe);
@@ -79,9 +83,13 @@ public class FnApiManager {
                         long t0 = System.currentTimeMillis();
                         try {
                             okhttp3.Response rs = chain.proceed(rq);
-                            AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
-                                    + " " + rs.header("Content-Type")
-                                    + " " + (System.currentTimeMillis() - t0) + "ms");
+                            boolean isImage = rq.url().encodedPath().contains("/sys/img");
+                            // 图片请求太多，成功的就不写日志（一页 100+ 张会瞬间冲满日志上限）
+                            if (!isImage || rs.code() != 200) {
+                                AppLog.d("HTTP", rq.method() + " " + rq.url() + " -> " + rs.code()
+                                        + " " + rs.header("Content-Type")
+                                        + " " + (System.currentTimeMillis() - t0) + "ms");
+                            }
                             return rs;
                         } catch (java.io.IOException ioe) {
                             AppLog.e("HTTP", rq.method() + " " + rq.url() + " 失败: " + ioe);
