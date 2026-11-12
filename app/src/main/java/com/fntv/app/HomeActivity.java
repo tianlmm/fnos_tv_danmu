@@ -1207,7 +1207,9 @@ public class HomeActivity extends AppCompatActivity {
             // 左侧海报（用卡片同款竖图 9:16），圆角处理
             String posterLand = makePosterUrl(item.poster);
             RoundedImageView posterL = new RoundedImageView(this);
-            int posterW = screenH * 2 / 3;
+            // 宽度同时受屏幕宽度限制，超宽屏（电视）上不会占掉半屏以上
+            int posterW = (int) Math.min(screenH * 2 / 3,
+                    getResources().getDisplayMetrics().widthPixels * 0.34f);
             posterL.setLayoutParams(new LinearLayout.LayoutParams(posterW, screenH));
             posterL.setScaleType(ImageView.ScaleType.FIT_XY);
             posterL.setBackgroundColor(0xFF1A1A1A);
@@ -1241,11 +1243,15 @@ public class HomeActivity extends AppCompatActivity {
             content.setPadding(14, 0, 14, 20);
 
             // 海报
+            int pScreenW = getResources().getDisplayMetrics().widthPixels;
+            int pScreenH = getResources().getDisplayMetrics().heightPixels;
+            // 竖屏海报：满宽但限制高度（最多 42% 屏高），避免 2:3 竖图把内容顶下去
+            int pPosterH = (int) Math.min(pScreenW * 4f / 3f, pScreenH * 0.42f);
             RoundedImageView poster = new RoundedImageView(this);
             poster.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            poster.setAdjustViewBounds(true);
-            poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    ViewGroup.LayoutParams.MATCH_PARENT, pPosterH));
+            poster.setAdjustViewBounds(false);
+            poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
             poster.setBackgroundColor(0xFF2A2A2A);
             poster.setCornerRadius(10);
             if (pUrl != null) { poster.setTag(pUrl); }

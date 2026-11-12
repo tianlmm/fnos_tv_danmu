@@ -1,7 +1,7 @@
 {
-  "versionCode": 47,
-  "versionName": "1.3.7",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.7/FNTV_1.3.7.apk",
-  "changelog": "1.首页卡片尺寸按屏幕方向自适应：竖屏 3 张出头，横屏按屏幕高度限制卡片高度\n2.横屏时设置页、媒体库页自动左右留白，内容不再被拉满整屏\n3.横屏搜索弹窗最大宽度 720dp\n4.其余界面顺带适配横竖屏切换",
+  "versionCode": 48,
+  "versionName": "1.3.8",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.3.8/FNTV_1.3.8.apk",
+  "changelog": "1.详情页竖屏：海报满宽但高度限制在 42% 屏高，居中裁剪，不再把简介/剧集顶到屏幕外\n2.详情页横屏：左侧海报宽度同时受屏宽 34% 限制，超宽屏不会被海报占掉半屏\n3.其余与 1.3.7 一致",
   "forceUpdate": false
 }
