@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         AppLog.init(this);
+        FnApiManager.getInstance().enableDiskCache(this);
         final Thread.UncaughtExceptionHandler prevHandler = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((th, ex) -> {
             AppLog.e("CRASH", "未捕获异常 in " + th.getName(), ex);

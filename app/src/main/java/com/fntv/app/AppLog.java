@@ -82,7 +82,8 @@ public final class AppLog {
 
     public static synchronized String dump() {
         StringBuilder sb = new StringBuilder();
-        for (String l : LINES) sb.append(l).append('\n');
+        // 最新的排在最上面
+        for (int i = LINES.size() - 1; i >= 0; i--) sb.append(LINES.get(i)).append('\n');
         if (sb.length() == 0) sb.append("（暂无日志，请先复现一次问题）\n");
         return sb.toString();
     }

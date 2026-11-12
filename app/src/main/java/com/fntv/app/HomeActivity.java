@@ -198,11 +198,8 @@ public class HomeActivity extends AppCompatActivity {
         if (savedDetailItem != null) {
             buildDetailPage(savedDetailItem, savedDetailInfo);
         } else if (currentTab == 0 && !mediaLibraries.isEmpty() && overviewBuilt && showingOverview) {
-            loadingPreviews = false;
-            showOverview();
-            loadAllPreviews();
+            // 只刷新“继续观看”的进度，不重建整页（否则每张海报都会重新走一遍加载流程）
             loadContinueWatching();
-            loadLiveChannels();
         } else if (currentTab == 0 && !overviewBuilt && showingOverview) {
             loadOverview();
         }
@@ -2288,7 +2285,7 @@ public class HomeActivity extends AppCompatActivity {
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() { loadImagesLazily(container, next); }
-            }, 100);
+            }, 35);
         }
     }
 

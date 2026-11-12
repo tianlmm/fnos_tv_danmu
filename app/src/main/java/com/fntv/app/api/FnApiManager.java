@@ -12,6 +12,7 @@ import javax.net.ssl.HostnameVerifier;
 
 public class FnApiManager {
     private static FnApiManager instance;
+    private static okhttp3.Cache diskCache;
     private FnApiService apiService;
     private final AuthInterceptor authInterceptor;
     private OkHttpClient okHttpClient; // 供 API 和图片使用
@@ -69,6 +70,7 @@ public class FnApiManager {
                         .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                         .connectionPool(new okhttp3.ConnectionPool(2, 10, java.util.concurrent.TimeUnit.SECONDS));
             }
+            if (diskCache != null) builder.cache(diskCache);
             return builder.build();
         } catch (Exception e) {
             OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(authInterceptor)
@@ -102,6 +104,16 @@ public class FnApiManager {
                 builder.sslSocketFactory(sc.getSocketFactory(), fallbackTrust);
             } catch (Exception ignored) {}
             return builder.build();
+        }
+    }
+
+    /** 启用图片/接口的磁盘缓存（128MB），冷启动或换页时可直接命中 */
+    public void enableDiskCache(android.content.Context ctx) {
+        if (diskCache != null || ctx == null) return;
+        try {
+            diskCache = new okhttp3.Cache(new java.io.File(ctx.getCacheDir(), "httpcache"),
+                    128L * 1024 * 1024);
+        } catch (Throwable ignored) {
         }
     }
 

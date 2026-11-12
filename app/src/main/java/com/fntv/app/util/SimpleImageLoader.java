@@ -19,7 +19,10 @@ import okhttp3.Response;
 public class SimpleImageLoader {
 
     private static final String TAG = "ImageLoader";
-    private static final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(8 * 1024 * 1024) {
+    /** 内存缓存：取可用堆的 1/8，上限 96MB（海报多，缓存太小会导致切页重复加载） */
+    private static final int CACHE_BYTES = Math.min(96 * 1024 * 1024,
+            (int) Math.min(Integer.MAX_VALUE, Runtime.getRuntime().maxMemory() / 8));
+    private static final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(CACHE_BYTES) {
         @Override
         protected int sizeOf(String key, Bitmap bitmap) {
             return bitmap.getByteCount();
@@ -36,9 +39,14 @@ public class SimpleImageLoader {
 
         Bitmap cached = cache.get(url);
         if (cached != null) {
-            view.setImageBitmap(cached);
+            Object tag = view.getTag();
+            // 已经是这张图就不重复 set，避免切页闪烁
+            if (!(tag instanceof String) || !url.equals(tag) || view.getDrawable() == null) {
+                view.setImageBitmap(cached);
+            }
             return;
         }
+        view.setTag(url);
 
         // Android 4.4 AsyncTask 默认串行，用线程池实现并行下载
         new ImageLoadTask(view, client).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, url);
