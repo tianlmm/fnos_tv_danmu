@@ -35,6 +35,7 @@ public class UpdateManager {
     };
 
     private static final String TAG = "Update";
+    private static final String RELEASES_URL = "https://github.com/tianlmm/fnos_tv_danmu/releases";
 
     public UpdateManager(Activity activity, Button btnCheckUpdate, int currentVersionCode) {
         this.activity = activity;
@@ -120,10 +121,9 @@ public class UpdateManager {
 
                 final boolean isTestInstall = BuildConfig.DEBUG && remoteVersion <= currentVersionCode;
                 if (remoteVersion <= currentVersionCode && !isTestInstall) {
-                    activity.runOnUiThread(() -> {
-                        Toast.makeText(activity, "已是最新版本", Toast.LENGTH_SHORT).show();
-                        resetBtn();
-                    });
+                    final int rv = remoteVersion;
+                    final String rn = versionName;
+                    activity.runOnUiThread(() -> showUpToDateDialog(rn, rv));
                     return;
                 }
 
@@ -149,7 +149,7 @@ public class UpdateManager {
                                    final int remoteVersion, final boolean isTestInstall) {
         new android.app.AlertDialog.Builder(activity)
                 .setTitle(title)
-                .setMessage(changelog)
+                .setMessage("当前版本：" + currentVersionName() + "（" + currentVersionCode + "）\n\n" + changelog)
                 .setCancelable(!forceUpdate)
                 .setPositiveButton(isTestInstall ? "测试安装器" : "立即更新", (dialog, which) -> {
                     dialog.dismiss();
@@ -163,6 +163,48 @@ public class UpdateManager {
                         resetBtn();
                     }
                 })
+                .show();
+    }
+
+    private String currentVersionName() {
+        try {
+            return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String nowText() {
+        return new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss", java.util.Locale.CHINA)
+                .format(new java.util.Date());
+    }
+
+    /** 已是最新：显示当前版本、GitHub 最新版本、上次/本次检查时间 */
+    private void showUpToDateDialog(String remoteName, int remoteVersion) {
+        android.content.SharedPreferences p = activity.getSharedPreferences(
+                "fntv_prefs", android.content.Context.MODE_PRIVATE);
+        String last = p.getString("last_update_check", "（首次检查）");
+        String now = nowText();
+        p.edit().putString("last_update_check", now).apply();
+        resetBtn();
+
+        String msg = "当前版本：" + currentVersionName() + "（" + currentVersionCode + "）\n"
+                + "GitHub 最新：" + (remoteName == null || remoteName.isEmpty() ? "未知" : remoteName)
+                + "（" + remoteVersion + "）\n\n"
+                + "✓ 已是最新版本\n\n"
+                + "· 上次检查：" + last + "\n"
+                + "· 本次检查：" + now;
+        new android.app.AlertDialog.Builder(activity)
+                .setTitle("检查更新")
+                .setMessage(msg)
+                .setPositiveButton("查看 Release", (d, w) -> {
+                    try {
+                        activity.startActivity(new android.content.Intent(
+                                android.content.Intent.ACTION_VIEW, android.net.Uri.parse(RELEASES_URL)));
+                    } catch (Exception ignored) {
+                    }
+                })
+                .setNegativeButton("关闭", null)
                 .show();
     }
 
