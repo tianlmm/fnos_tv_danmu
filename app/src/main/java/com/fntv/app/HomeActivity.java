@@ -2215,14 +2215,22 @@ public class HomeActivity extends AppCompatActivity {
 
     private void setupFeedback() {
         btnFeedback.setOnClickListener(v -> {
+            final String url = "https://github.com/tianlmm/fnos_tv_danmu/issues";
             new android.app.AlertDialog.Builder(this)
                     .setTitle("问题反馈")
-                    .setMessage("如有问题或建议，请加 QQ群：\n693516430")
-                    .setPositiveButton("复制群号", (dialog, which) -> {
+                    .setMessage("反馈问题 / 提建议请到本仓库的 GitHub Issues：\n" + url
+                            + "\n\n建议先在「设置 → 导出日志」导出 fntv.log 一起附上。")
+                    .setPositiveButton("打开", (dialog, which) -> {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
+                        } catch (Exception ignored) {
+                        }
+                    })
+                    .setNeutralButton("复制链接", (dialog, which) -> {
                         android.content.ClipboardManager cm = (android.content.ClipboardManager)
                                 getSystemService(CLIPBOARD_SERVICE);
-                        cm.setText("693516430");
-                        Toast.makeText(this, "群号已复制", Toast.LENGTH_SHORT).show();
+                        cm.setText(url);
+                        Toast.makeText(this, "链接已复制", Toast.LENGTH_SHORT).show();
                     })
                     .setNegativeButton("关闭", null)
                     .show();
