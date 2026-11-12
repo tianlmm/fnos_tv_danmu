@@ -782,8 +782,10 @@ public class HomeActivity extends AppCompatActivity {
         card.addView(iv);
 
         TextView title = new TextView(this);
+        // 固定两行高度：片名长短不再影响卡片高度，整排卡片对齐一致
         title.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(38)));
+        title.setGravity(Gravity.TOP);
         title.setTextSize(14);
         title.setTextColor(0xFFEEEEEE);
         title.setMaxLines(2);
@@ -794,7 +796,7 @@ public class HomeActivity extends AppCompatActivity {
 
         TextView meta = new TextView(this);
         meta.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(16)));
         meta.setTextSize(11);
         meta.setTextColor(0xFF8A8A8A);
         meta.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), 0);
@@ -804,7 +806,6 @@ public class HomeActivity extends AppCompatActivity {
         if ("TV".equals(item.type)) m = m.isEmpty() ? "剧集" : m + " · 剧集";
         else if ("Movie".equals(item.type)) m = m.isEmpty() ? "电影" : m + " · 电影";
         meta.setText(m);
-        if (m.isEmpty()) meta.setVisibility(View.GONE);
         card.addView(meta);
 
         card.setTag(item);
