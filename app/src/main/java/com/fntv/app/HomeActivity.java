@@ -375,12 +375,8 @@ public class HomeActivity extends AppCompatActivity {
             if (homeScroll != null) homeScroll.smoothScrollTo(0, 0);
         }));
         for (final MediaDbItem lib : mediaLibraries) {
-            libTabRow.addView(makeLibChip(lib.title, () -> {
-                View h = sectionHeaderViews.get(lib.guid);
-                if (h != null && homeScroll != null) {
-                    homeScroll.smoothScrollTo(0, Math.max(0, h.getTop()));
-                }
-            }));
+            // 点顶部标签直接进入该媒体库（与分区标题的 › 行为一致）
+            libTabRow.addView(makeLibChip(lib.title, () -> browseItems(lib.guid, lib.title)));
         }
     }
 
@@ -394,6 +390,9 @@ public class HomeActivity extends AppCompatActivity {
         tv.setTextSize(16);
         tv.setGravity(Gravity.CENTER_VERTICAL);
         tv.setTextColor(getResources().getColor(R.color.text_secondary));
+        tv.setBackgroundResource(R.drawable.bg_chip);
+        tv.setPadding(dpToPx(16), 0, dpToPx(16), 0);
+        tv.setClickable(true);
         tv.setFocusable(true);
         tv.setOnClickListener(v -> onClick.run());
         tv.setOnFocusChangeListener((v, f) -> {
