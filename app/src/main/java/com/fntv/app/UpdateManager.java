@@ -65,9 +65,8 @@ public class UpdateManager {
                 String ts = new java.text.SimpleDateFormat("yyyyMMddHHmm", java.util.Locale.CHINA).format(new java.util.Date());
                 for (String url : UPDATE_URLS) {
                     try {
-                        if (!url.contains("raw.githubusercontent.com")) {
-                            url = url + (url.contains("?") ? "&" : "?") + "t=" + ts;
-                        }
+                        // 所有源都带时间戳，避免 raw / jsDelivr 的 CDN 缓存返回旧版本
+                        url = url + (url.contains("?") ? "&" : "?") + "t=" + ts;
                         Log.d(TAG, "尝试源: " + url);
                         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
                         c.setConnectTimeout(8000);
@@ -83,9 +82,13 @@ public class UpdateManager {
                             String l;
                             while ((l = r.readLine()) != null) sb.append(l);
                             r.close();
-                            json = new org.json.JSONObject(sb.toString());
-                            usedUrl = url;
-                            break;
+                            org.json.JSONObject cand = new org.json.JSONObject(sb.toString());
+                            int candV = cand.optInt("versionCode", 0);
+                            // 不 break：不同源可能命中不同缓存，取 versionCode 最大的那个
+                            if (json == null || candV > json.optInt("versionCode", 0)) {
+                                json = cand;
+                                usedUrl = url;
+                            }
                         } else {
                             try {
                                 java.io.BufferedReader er = new java.io.BufferedReader(
