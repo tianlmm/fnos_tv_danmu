@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private float density;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeManager.applySaved(this);
         AppLog.init(this);
         FnApiManager.getInstance().enableDiskCache(this);
         final Thread.UncaughtExceptionHandler prevHandler = Thread.getDefaultUncaughtExceptionHandler();
@@ -221,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         btn.setLayoutParams(new LinearLayout.LayoutParams(0, (int)(27 * density), 1));
         btn.setBackgroundResource(R.drawable.bg_input);
         btn.setText(text);
-        btn.setTextColor(0xFFEEEEEE);
+        btn.setTextColor(getResources().getColor(R.color.text_primary));
         btn.setTextSize(13);
         btn.setFocusable(true);
         btn.setPadding(8, 0, 8, 0);
@@ -260,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
         etHost.setHint(hostHint);
         etHost.setInputType(hostInputType);
         etHost.setPadding((int)(12 * density), 0, (int)(12 * density), 0);
-        etHost.setTextColor(0xFFEEEEEE);
+        etHost.setTextColor(getResources().getColor(R.color.text_primary));
         etHost.setTextSize(15);
         int hostId = View.generateViewId();
         etHost.setId(hostId);
@@ -277,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
         etUser.setHint("输入用户名");
         etUser.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
         etUser.setPadding((int)(12 * density), 0, (int)(12 * density), 0);
-        etUser.setTextColor(0xFFEEEEEE);
+        etUser.setTextColor(getResources().getColor(R.color.text_primary));
         etUser.setTextSize(15);
         int userId = View.generateViewId();
         etUser.setId(userId);
@@ -296,7 +297,7 @@ public class MainActivity extends AppCompatActivity {
         etPass.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         etPass.setPadding((int)(12 * density), 0, (int)(12 * density), 0);
-        etPass.setTextColor(0xFFEEEEEE);
+        etPass.setTextColor(getResources().getColor(R.color.text_primary));
         etPass.setTextSize(15);
         int passId = View.generateViewId();
         etPass.setId(passId);
@@ -320,7 +321,7 @@ public class MainActivity extends AppCompatActivity {
         cb.setLayoutParams(cbLp);
         cb.setFocusable(false);
         cb.setText("记住密码");
-        cb.setTextColor(0xFFEEEEEE);
+        cb.setTextColor(getResources().getColor(R.color.text_primary));
         cb.setTextSize(14);
         cb.setId(View.generateViewId());
         // 兼容旧版本的勾选图标染蓝（替代 API 22 的 getButtonDrawable + setTint）
@@ -402,11 +403,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateModeColor() {
         if (isFnIdMode) {
-            btnHttpMode.setTextColor(0xFF808080);
-            btnFnIdMode.setTextColor(0xFFEEEEEE);
+            btnHttpMode.setTextColor(getResources().getColor(R.color.text_hint));
+            btnFnIdMode.setTextColor(getResources().getColor(R.color.text_primary));
         } else {
-            btnHttpMode.setTextColor(0xFFEEEEEE);
-            btnFnIdMode.setTextColor(0xFF808080);
+            btnHttpMode.setTextColor(getResources().getColor(R.color.text_primary));
+            btnFnIdMode.setTextColor(getResources().getColor(R.color.text_hint));
         }
     }
 
