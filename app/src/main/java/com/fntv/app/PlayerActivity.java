@@ -364,18 +364,19 @@ public class PlayerActivity extends AppCompatActivity {
             @Override public SharedPreferences getPrefs() { return getSharedPreferences("fntv_prefs", MODE_PRIVATE); }
             @Override public void onStreamInfoParsed(CloudStreamManager.StreamInfo info) {
                 streamBitrate = info.bitrate;
-                streamVCodec = info.vCodec;
-                streamVProfile = info.vProfile;
+                // 服务端字段可能缺省（null），统一归一到空串，避免后续 isEmpty() 崩
+                streamVCodec = info.vCodec == null ? "" : info.vCodec;
+                streamVProfile = info.vProfile == null ? "" : info.vProfile;
                 streamVWidth = info.width;
                 streamVHeight = info.height;
                 streamVBitDepth = info.bitDepth;
                 streamVHdr = info.vHdr;
-                streamVPixFmt = info.vPixFmt;
-                streamVColor = info.vColor;
-                streamVFps = info.vFps;
+                streamVPixFmt = info.vPixFmt == null ? "" : info.vPixFmt;
+                streamVColor = info.vColor == null ? "" : info.vColor;
+                streamVFps = info.vFps == null ? "" : info.vFps;
                 streamDuration = info.duration;
                 streamFileSize = info.fileSize;
-                streamContainer = info.container;
+                streamContainer = info.container == null ? "" : info.container;
                 streamResolution = info.resolution != null ? info.resolution : "";
                 streamAudioTracks = info.audioTracks;
                 streamSubtitleTracks = info.subtitleTracks;
@@ -1167,7 +1168,8 @@ public class PlayerActivity extends AppCompatActivity {
             }
             return false;
         }
-        return !streamVColor.isEmpty() && (streamVColor.contains("bt2020") || streamVColor.contains("2020"));
+        String color = streamVColor == null ? "" : streamVColor;
+        return !color.isEmpty() && (color.contains("bt2020") || color.contains("2020"));
     }
 
     /** 调节屏幕亮度（仅当前 Activity），val 0~200，100=系统默认 */
