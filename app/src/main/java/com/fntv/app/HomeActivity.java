@@ -1565,7 +1565,14 @@ public class HomeActivity extends AppCompatActivity {
         // Episode 类型 → 先加载季列表，点击某季后加载该季剧集
         if (item.guid != null && !item.guid.isEmpty()) {
             content.addView(makeSpacer(16));
-            loadSeasons(content, item.guid, item, playBtn, pTs);
+            // 扩展片源：直接点的可能是「集」而不是「季/文件夹」，season/list(集 guid) 会返回空，
+            // 这时用 play/info 里的 parentGuid 再试一次，避免「必须先播一遍才能看到集数」
+            String altGuid = null;
+            if (info != null && info.parentGuid != null && !info.parentGuid.isEmpty()
+                    && !info.parentGuid.equals(item.guid)) {
+                altGuid = info.parentGuid;
+            }
+            loadSeasons(content, item.guid, item, playBtn, pTs, altGuid);
         }
 
     }
@@ -1602,6 +1609,11 @@ public class HomeActivity extends AppCompatActivity {
     /** 加载季列表（从 season/list 接口获取） */
     private void loadSeasons(final LinearLayout content, final String itemGuid, final PlayListItem item,
                               final Button playBtn, final long pTs) {
+        loadSeasons(content, itemGuid, item, playBtn, pTs, null);
+    }
+
+    private void loadSeasons(final LinearLayout content, final String itemGuid, final PlayListItem item,
+                              final Button playBtn, final long pTs, final String altGuid) {
         if (seasonsLoading.contains(itemGuid)) {
             AppLog.d("Seasons", "跳过重复请求 " + itemGuid);
             return;
@@ -1623,7 +1635,22 @@ public class HomeActivity extends AppCompatActivity {
                                    Response<ApiResponse<List<PlayListItem>>> response) {
                 seasonsLoading.remove(itemGuid);
                 if (!response.isSuccessful() || response.body() == null || response.body().code != 0
-                        || response.body().data == null || response.body().data.isEmpty()) return;
+                        || response.body().data == null || response.body().data.isEmpty()) {
+                    // 集 guid 查不到季 → 用父级 guid 再试一次
+                    if (altGuid != null && !altGuid.isEmpty()) {
+                        AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，改用父级 " + altGuid);
+                        // 去掉上一次加的「选择剧集」标题，避免重复
+                        if (content.getChildCount() > 0) {
+                            View lastChild = content.getChildAt(content.getChildCount() - 1);
+                            if (lastChild instanceof TextView
+                                    && "选择剧集".contentEquals(((TextView) lastChild).getText())) {
+                                content.removeView(lastChild);
+                            }
+                        }
+                        loadSeasons(content, altGuid, item, playBtn, pTs, null);
+                    }
+                    return;
+                }
                 List<PlayListItem> seasons = response.body().data;
                 for (final PlayListItem season : seasons) {
                     LinearLayout card = new LinearLayout(HomeActivity.this);
