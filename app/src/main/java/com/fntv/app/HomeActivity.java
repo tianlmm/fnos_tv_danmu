@@ -371,9 +371,6 @@ public class HomeActivity extends AppCompatActivity {
     private void buildLibTabs() {
         if (libTabRow == null) return;
         libTabRow.removeAllViews();
-        libTabRow.addView(makeLibChip("全部", () -> {
-            if (homeScroll != null) homeScroll.smoothScrollTo(0, 0);
-        }));
         for (final MediaDbItem lib : mediaLibraries) {
             // 点顶部标签直接进入该媒体库（与分区标题的 › 行为一致）
             libTabRow.addView(makeLibChip(lib.title, () -> browseItems(lib.guid, lib.title)));
@@ -384,7 +381,7 @@ public class HomeActivity extends AppCompatActivity {
         TextView tv = new TextView(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.setMargins(dpToPx(12), 0, dpToPx(12), 0);
+        lp.setMargins(dpToPx(10), 0, dpToPx(10), 0);
         tv.setLayoutParams(lp);
         tv.setText(text);
         tv.setTextSize(16);

@@ -1,7 +1,7 @@
 {
-  "versionCode": 53,
-  "versionName": "1.4.2",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.2/FNTV_1.4.2.apk",
-  "changelog": "1.顶部标签栏改为直接进入对应媒体库（之前只是滚动定位，看着像没反应）\n2.标签加上胶囊背景，明确是可点的\n3.首页滚动区域高度修正，底部不再被顶出屏幕",
+  "versionCode": 54,
+  "versionName": "1.4.3",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.3/FNTV_1.4.3.apk",
+  "changelog": "1.顶部标签去掉「全部」\n2.标签左右间距改为 10dp",
   "forceUpdate": false
 }
