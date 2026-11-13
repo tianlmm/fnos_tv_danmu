@@ -328,6 +328,9 @@ public class HomeActivity extends AppCompatActivity {
         continueWatchingBox.setOrientation(LinearLayout.VERTICAL);
         continueWatchingBox.setTag("continue_watching");
         moviesContainer.addView(continueWatchingBox);
+        if (!lastContinueItems.isEmpty()) {
+            addContinueWatchingApi(continueWatchingBox, lastContinueItems, -1);
+        }
 
         // 各媒体库：标题 + 预览容器
         java.util.ArrayList<Integer> viewAllIds = new java.util.ArrayList<>();
@@ -673,43 +676,66 @@ public class HomeActivity extends AppCompatActivity {
         return card;
     }
 
+    /** 缓存的「继续观看」列表：页面重建时先渲染，避免刚看完返回时整行消失 */
+    private java.util.List<PlayListItem> lastContinueItems = new java.util.ArrayList<>();
+
     private void loadContinueWatching() {
+        loadContinueWatching(0);
+    }
+
+    private void loadContinueWatching(final int attempt) {
         apiManager.getApi().getPlayList().enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
                                    Response<ApiResponse<List<PlayListItem>>> response) {
-                if (!response.isSuccessful() || response.body() == null || response.body().code != 0
-                        || response.body().data == null || response.body().data.isEmpty()) return;
-                // 找到继续观看占位容器
-                for (int i = 0; i < moviesContainer.getChildCount(); i++) {
-                    View v = moviesContainer.getChildAt(i);
-                    if (v instanceof LinearLayout && "continue_watching".equals(v.getTag())) {
-                        final int firstViewAllId;
-                        // 查找第一个查看全部按钮
-                        int fva = -1;
-                        for (int j = 0; j < moviesContainer.getChildCount(); j++) {
-                            View cv = moviesContainer.getChildAt(j);
-                            if (cv instanceof ViewGroup) {
-                                for (int ci = 0; ci < ((ViewGroup) cv).getChildCount(); ci++) {
-                                    View child = ((ViewGroup) cv).getChildAt(ci);
-                                    if (child instanceof Button && child.isFocusable()) {
-                                        fva = child.getId();
-                                        break;
-                                    }
-                                }
-                                if (fva > 0) break;
-                            }
-                        }
-                        addContinueWatchingApi((LinearLayout) v, response.body().data, fva);
-                        break;
-                    }
+                java.util.List<PlayListItem> data = null;
+                if (response.isSuccessful() && response.body() != null && response.body().code == 0
+                        && response.body().data != null && !response.body().data.isEmpty()) {
+                    data = response.body().data;
                 }
+                if (data == null) {
+                    // 刚播完返回时播放记录可能还没写入服务端：先用缓存渲染，1.5 秒后再取一次
+                    if (!lastContinueItems.isEmpty()) renderContinue(lastContinueItems);
+                    if (attempt == 0) {
+                        new Handler(Looper.getMainLooper())
+                                .postDelayed(() -> loadContinueWatching(1), 1500);
+                    }
+                    return;
+                }
+                lastContinueItems = data;
+                renderContinue(data);
             }
+
             @Override
-            public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
+            public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
+                if (!lastContinueItems.isEmpty()) renderContinue(lastContinueItems);
+            }
         });
     }
 
+    private void renderContinue(java.util.List<PlayListItem> items) {
+        for (int i = 0; i < moviesContainer.getChildCount(); i++) {
+            View v = moviesContainer.getChildAt(i);
+            if (v instanceof LinearLayout && "continue_watching".equals(v.getTag())) {
+                int fva = -1;
+                for (int j = 0; j < moviesContainer.getChildCount(); j++) {
+                    View cv = moviesContainer.getChildAt(j);
+                    if (cv instanceof ViewGroup) {
+                        for (int ci = 0; ci < ((ViewGroup) cv).getChildCount(); ci++) {
+                            View child = ((ViewGroup) cv).getChildAt(ci);
+                            if (child instanceof Button && child.isFocusable()) {
+                                fva = child.getId();
+                                break;
+                            }
+                        }
+                        if (fva > 0) break;
+                    }
+                }
+                addContinueWatchingApi((LinearLayout) v, items, fva);
+                return;
+            }
+        }
+    }
 
     private void setFocusDownInContainer(ViewGroup group, int targetId) {
         for (int i = 0; i < group.getChildCount(); i++) {
