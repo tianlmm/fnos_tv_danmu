@@ -681,6 +681,8 @@ public class HomeActivity extends AppCompatActivity {
     private java.util.List<PlayListItem> lastContinueItems = new java.util.ArrayList<>();
     /** 正在请求中的季列表，避免详情页重建时同一个 guid 并发发 5~6 个请求 */
     private final java.util.Set<String> seasonsLoading = new java.util.HashSet<>();
+    /** 正在请求中的集列表，避免刷新与自动重试叠在一起重复请求 */
+    private final java.util.Set<String> episodesLoading = new java.util.HashSet<>();
 
     private void loadContinueWatching() {
         loadContinueWatching(0);
@@ -1761,13 +1763,9 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /** 加载某季的剧集列表（点击季后调用，直接显示剧集） */
-    private void loadEpisodesForSeason(String seasonGuid, int seasonNumber, PlayListItem original) {
-        loadEpisodesForSeason(seasonGuid, seasonNumber, original, 0);
-    }
-
+    /** 该季的集列表：进入自动加载 → 首次为空自动重试 → 仍为空用父文件夹 guid 兜底 → 再空显示空态 */
     private void loadEpisodesForSeason(final String seasonGuid, final int seasonNumber,
-                                       final PlayListItem original, final int attempt) {
+                                       final PlayListItem original) {
         showingEpisodes = true;
         moviesContainer.removeAllViews();
         LinearLayout page = new LinearLayout(this);
@@ -1775,10 +1773,11 @@ public class HomeActivity extends AppCompatActivity {
         page.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         moviesContainer.addView(wrapWithRefresh(page, "季 " + seasonNumber, () -> {
+            episodesLoading.clear();
             moviesContainer.removeAllViews();
-            loadEpisodesForSeason(seasonGuid, seasonNumber, original, 0);
+            loadEpisodesForSeason(seasonGuid, seasonNumber, original);
         }));
-        // 标题
+
         TextView h = new TextView(this);
         h.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 78));
@@ -1790,35 +1789,97 @@ public class HomeActivity extends AppCompatActivity {
         page.addView(h);
         page.addView(makeSpacer(8));
 
-        apiManager.getApi().getEpisodeList(seasonGuid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
+        final String folderGuid = original != null ? original.guid : null;
+        requestEpisodes(page, seasonGuid, folderGuid, original, 0);
+    }
+
+    private void requestEpisodes(final LinearLayout page, final String guid, final String folderGuid,
+                                 final PlayListItem original, final int stage) {
+        if (guid == null || guid.isEmpty()) {
+            showEpisodesEmpty(page);
+            return;
+        }
+        if (!episodesLoading.add(guid)) {
+            AppLog.d("Episodes", "跳过重复请求 " + guid);
+            return;
+        }
+        apiManager.getApi().getEpisodeList(guid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
                                    Response<ApiResponse<List<PlayListItem>>> response) {
+                episodesLoading.remove(guid);
                 boolean ok = response.isSuccessful() && response.body() != null && response.body().code == 0
                         && response.body().data != null && !response.body().data.isEmpty();
-                AppLog.d("Episodes", "episode/list(" + seasonGuid + ") → "
-                        + (ok ? response.body().data.size() + " 集" : "空"));
-                if (!ok) {
-                    // 自动刷新一次：服务端偶尔首次返回空
-                    if (attempt == 0) {
-                        new Handler(Looper.getMainLooper()).postDelayed(
-                                () -> loadEpisodesForSeason(seasonGuid, seasonNumber, original, 1), 1200);
-                    }
+                AppLog.d("Episodes", "episode/list(" + guid + ") → "
+                        + (ok ? response.body().data.size() + " 集" : "空") + " stage=" + stage);
+                if (ok) {
+                    renderEpisodeBatch(page, response.body().data, 0, original);
                     return;
                 }
-                for (PlayListItem ep : response.body().data) {
-                    page.addView(makeEpisodeItem(ep, ep.guid.equals(original.guid)));
-                    page.addView(makeSpacer(8));
+                if (stage == 0) {
+                    // 服务端偶尔首次返回空，1.2 秒后重试一次
+                    new Handler(Looper.getMainLooper()).postDelayed(
+                            () -> requestEpisodes(page, guid, folderGuid, original, 1), 1200);
+                } else if (stage == 1 && folderGuid != null && !folderGuid.equals(guid)) {
+                    // 第 4 级兜底：用父文件夹 guid 再试一次
+                    AppLog.d("Episodes", "该季为空，改用父文件夹 " + folderGuid);
+                    requestEpisodes(page, folderGuid, null, original, 2);
+                } else {
+                    showEpisodesEmpty(page);
                 }
             }
-            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
-                AppLog.e("Episodes", "episode/list 失败: " + t.getMessage());
-                if (attempt == 0) {
+
+            @Override
+            public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
+                episodesLoading.remove(guid);
+                AppLog.e("Episodes", "episode/list(" + guid + ") 失败: " + t.getMessage());
+                if (stage == 0) {
                     new Handler(Looper.getMainLooper()).postDelayed(
-                            () -> loadEpisodesForSeason(seasonGuid, seasonNumber, original, 1), 1500);
+                            () -> requestEpisodes(page, guid, folderGuid, original, 1), 1500);
+                } else if (stage == 1 && folderGuid != null && !folderGuid.equals(guid)) {
+                    requestEpisodes(page, folderGuid, null, original, 2);
+                } else {
+                    showEpisodesEmpty(page);
                 }
             }
         });
+    }
+
+    /** 分批渲染，每批 30 集，避免 80 集一次性 addView 卡顿 */
+    private void renderEpisodeBatch(final LinearLayout page, final List<PlayListItem> eps,
+                                    final int from, final PlayListItem original) {
+        int to = Math.min(from + 30, eps.size());
+        for (int i = from; i < to; i++) {
+            PlayListItem ep = eps.get(i);
+            page.addView(makeEpisodeItem(ep, original != null && ep.guid != null
+                    && ep.guid.equals(original.guid)));
+            page.addView(makeSpacer(8));
+        }
+        if (to < eps.size()) {
+            Button more = new Button(this);
+            more.setText("加载更多（还有 " + (eps.size() - to) + " 集）");
+            more.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(48)));
+            more.setBackgroundResource(R.drawable.bg_btn_primary);
+            more.setTextColor(getResources().getColor(R.color.text_white));
+            more.setOnClickListener(v -> {
+                page.removeView(more);
+                renderEpisodeBatch(page, eps, to, original);
+            });
+            page.addView(more);
+            page.addView(makeSpacer(8));
+        }
+    }
+
+    private void showEpisodesEmpty(LinearLayout page) {
+        TextView t = new TextView(this);
+        t.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(120)));
+        t.setGravity(Gravity.CENTER);
+        t.setText("该季暂无剧集\n可以下拉刷新重试，或返回上一层换一季");
+        t.setTextColor(getResources().getColor(R.color.text_hint));
+        t.setTextSize(15);
+        page.addView(t);
     }
 
     /** 显示季列表 */
