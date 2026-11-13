@@ -168,6 +168,7 @@ public class HomeActivity extends AppCompatActivity {
         TextView btnHomeSearch = findViewById(R.id.btnHomeSearch);
         if (btnHomeSearch != null) btnHomeSearch.setOnClickListener(v -> showSearchDialog());
         startHomeClock();
+        setupPullToRefresh();
         applyResponsivePaddings();
         tvDecoderValue = findViewById(R.id.tvDecoderValue);
         btnLogout = findViewById(R.id.btnLogout);
@@ -419,6 +420,11 @@ public class HomeActivity extends AppCompatActivity {
         }
         AppLog.d("Overview", "返回首页：无暂存视图，用缓存重建");
         loadingPreviews = false;
+        currentPageRefresh = () -> {
+            loadingPreviews = false;
+            loadAllPreviews();
+            loadContinueWatching();
+        };
         showOverview();
         loadAllPreviews();
         loadContinueWatching();
@@ -455,6 +461,42 @@ public class HomeActivity extends AppCompatActivity {
             ((TextView) v).setTypeface(f ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         });
         return tv;
+    }
+
+    /** 外层 ScrollView 的下拉手势 → 当前页面刷新（不拦截子 View 的点击与滚动） */
+    private void setupPullToRefresh() {
+        if (homeScroll == null) return;
+        homeScroll.setOnTouchListener(new View.OnTouchListener() {
+            private float startY = -1;
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        startY = homeScroll.getScrollY() <= 0 ? e.getY() : -1;
+                        break;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        if (startY > 0 && e.getY() - startY > dpToPx(90)) {
+                            startY = -1;
+                            triggerPageRefresh();
+                        }
+                        break;
+                    default:
+                        startY = -1;
+                        break;
+                }
+                return false;   // 不消费事件，正常滚动/点击不受影响
+            }
+        });
+    }
+
+    private void triggerPageRefresh() {
+        if (currentPageRefresh == null) return;
+        long now = System.currentTimeMillis();
+        if (now - lastPullRefreshMs < 2000) return;
+        lastPullRefreshMs = now;
+        AppLog.d("Refresh", "下拉触发刷新");
+        Toast.makeText(this, "正在刷新…", Toast.LENGTH_SHORT).show();
+        currentPageRefresh.run();
     }
 
     private void startHomeClock() {
@@ -743,6 +785,9 @@ public class HomeActivity extends AppCompatActivity {
     private final java.util.Map<String, List<PlayListItem>> previewCache = new java.util.HashMap<>();
     /** 首页视图被「摘下」暂存，返回时直接贴回，避免重建导致闪烁 */
     private java.util.List<View> savedOverviewChildren;
+    /** 当前页面的刷新动作（详情/季/首页），由外层 ScrollView 的下拉手势触发 */
+    private Runnable currentPageRefresh;
+    private long lastPullRefreshMs = 0;
     private boolean overviewAttached = false;
     /** 扩展抓取有延迟，首个请求常常返回空，按这个节奏重试（毫秒） */
     private static final long[] EPISODE_RETRY_DELAYS = {1200, 4000, 8000, 15000};
@@ -1275,6 +1320,7 @@ public class HomeActivity extends AppCompatActivity {
         detachOverview();
         tvMoviesLoading.setVisibility(View.VISIBLE);
         tvMoviesLoading.setText("加载中...");
+        currentPageRefresh = () -> showDetail(item);
 
         Map<String, String> body = new HashMap<>();
         body.put("item_guid", item.guid);
@@ -1363,7 +1409,7 @@ public class HomeActivity extends AppCompatActivity {
             svL.addView(contentL);
             rootRow.addView(svL);
 
-            moviesContainer.addView(wrapDetailWithRefresh(rootRow, item));
+            moviesContainer.addView(rootRow);
         } else {
             // ====== 竖屏：原布局 ======
             androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(this);
@@ -1396,7 +1442,7 @@ public class HomeActivity extends AppCompatActivity {
             buildDetailContent(content, item, info, epTitle, series, epNum, pUrl);
 
             scrollView.addView(content);
-            moviesContainer.addView(wrapDetailWithRefresh(scrollView, item));
+            moviesContainer.addView(scrollView);
         }
     }
 
@@ -1835,12 +1881,13 @@ public class HomeActivity extends AppCompatActivity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        moviesContainer.addView(wrapWithRefresh(page, "季 " + seasonNumber, () -> {
+        moviesContainer.addView(page);
+        currentPageRefresh = () -> {
             episodesLoading.clear();
             episodesCache.remove(seasonGuid);
             detachOverview();
             loadEpisodesForSeason(seasonGuid, seasonNumber, original);
-        }));
+        };
 
         TextView h = new TextView(this);
         h.setLayoutParams(new LinearLayout.LayoutParams(

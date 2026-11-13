@@ -1,7 +1,7 @@
 {
-  "versionCode": 70,
-  "versionName": "1.5.9",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.9/FNTV_1.5.9.apk",
-  "changelog": "1.返回首页不再重建视图：进详情时把首页 View 摘下暂存，返回时原样贴回（图片/滚动位置都保留）\n2.彻底消除从详情页返回时的闪烁",
+  "versionCode": 71,
+  "versionName": "1.6.0",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.0/FNTV_1.6.0.apk",
+  "changelog": "1.修复进入剧集页后无法上下滑动（SwipeRefreshLayout 吞掉了滚动手势）\n2.下拉刷新改到外层 ScrollView 上实现，不拦截子 View 的点击与滚动\n3.详情、季、首页都支持下拉刷新",
   "forceUpdate": false
 }
