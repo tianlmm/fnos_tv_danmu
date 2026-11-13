@@ -693,12 +693,17 @@ public class HomeActivity extends AppCompatActivity {
                         && response.body().data != null && !response.body().data.isEmpty()) {
                     data = response.body().data;
                 }
+                AppLog.d("Continue", "play/list 第" + (attempt + 1) + "次返回 "
+                        + (data == null ? "0 条" : data.size() + " 条")
+                        + "，缓存 " + lastContinueItems.size() + " 条");
                 if (data == null) {
-                    // 刚播完返回时播放记录可能还没写入服务端：先用缓存渲染，1.5 秒后再取一次
+                    // 刚播完返回时播放记录可能还没写入服务端：先用缓存渲染，再重试几次
                     if (!lastContinueItems.isEmpty()) renderContinue(lastContinueItems);
-                    if (attempt == 0) {
+                    long[] delays = {1500, 3000, 6000};   // 依次重试，最多 3 次
+                    if (attempt < delays.length) {
+                        final int next = attempt + 1;
                         new Handler(Looper.getMainLooper())
-                                .postDelayed(() -> loadContinueWatching(1), 1500);
+                                .postDelayed(() -> loadContinueWatching(next), delays[attempt]);
                     }
                     return;
                 }
