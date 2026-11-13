@@ -1335,22 +1335,29 @@ public class HomeActivity extends AppCompatActivity {
         }
     }
 
-    /** 详情页包一层下拉刷新：重新请求 play/info 并重建（季/集列表也会重新加载） */
-    private View wrapDetailWithRefresh(View inner, final PlayListItem item) {
+    /** 给页面包一层下拉刷新 */
+    private View wrapWithRefresh(View inner, final String tag, final Runnable onRefresh) {
         androidx.swiperefreshlayout.widget.SwipeRefreshLayout srl =
                 new androidx.swiperefreshlayout.widget.SwipeRefreshLayout(this);
         srl.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         srl.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
         srl.addView(inner, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         srl.setOnRefreshListener(() -> {
-            AppLog.d("Detail", "下拉刷新详情 " + item.guid);
-            seasonsLoading.clear();          // 允许重新请求季列表
+            AppLog.d("Refresh", "下拉刷新 " + tag);
             srl.setRefreshing(false);
-            showDetail(item);
+            onRefresh.run();
         });
         return srl;
+    }
+
+    /** 详情页下拉刷新：重新请求 play/info 并重建（季/集列表也会重新加载） */
+    private View wrapDetailWithRefresh(View inner, final PlayListItem item) {
+        return wrapWithRefresh(inner, "详情 " + item.guid, () -> {
+            seasonsLoading.clear();          // 允许重新请求季列表
+            showDetail(item);
+        });
     }
 
     /** 构建详情页的核心内容（元数据、播放按钮、剧集列表） */
@@ -1756,8 +1763,21 @@ public class HomeActivity extends AppCompatActivity {
 
     /** 加载某季的剧集列表（点击季后调用，直接显示剧集） */
     private void loadEpisodesForSeason(String seasonGuid, int seasonNumber, PlayListItem original) {
+        loadEpisodesForSeason(seasonGuid, seasonNumber, original, 0);
+    }
+
+    private void loadEpisodesForSeason(final String seasonGuid, final int seasonNumber,
+                                       final PlayListItem original, final int attempt) {
         showingEpisodes = true;
         moviesContainer.removeAllViews();
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        moviesContainer.addView(wrapWithRefresh(page, "季 " + seasonNumber, () -> {
+            moviesContainer.removeAllViews();
+            loadEpisodesForSeason(seasonGuid, seasonNumber, original, 0);
+        }));
         // 标题
         TextView h = new TextView(this);
         h.setLayoutParams(new LinearLayout.LayoutParams(
@@ -1767,21 +1787,37 @@ public class HomeActivity extends AppCompatActivity {
         h.setTextColor(getResources().getColor(R.color.text_primary));
         h.setTextSize(21);
         h.setTypeface(Typeface.DEFAULT_BOLD);
-        moviesContainer.addView(h);
-        moviesContainer.addView(makeSpacer(8));
+        page.addView(h);
+        page.addView(makeSpacer(8));
 
         apiManager.getApi().getEpisodeList(seasonGuid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
             @Override
             public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
                                    Response<ApiResponse<List<PlayListItem>>> response) {
-                if (!response.isSuccessful() || response.body() == null || response.body().code != 0
-                        || response.body().data == null || response.body().data.isEmpty()) return;
+                boolean ok = response.isSuccessful() && response.body() != null && response.body().code == 0
+                        && response.body().data != null && !response.body().data.isEmpty();
+                AppLog.d("Episodes", "episode/list(" + seasonGuid + ") → "
+                        + (ok ? response.body().data.size() + " 集" : "空"));
+                if (!ok) {
+                    // 自动刷新一次：服务端偶尔首次返回空
+                    if (attempt == 0) {
+                        new Handler(Looper.getMainLooper()).postDelayed(
+                                () -> loadEpisodesForSeason(seasonGuid, seasonNumber, original, 1), 1200);
+                    }
+                    return;
+                }
                 for (PlayListItem ep : response.body().data) {
-                    moviesContainer.addView(makeEpisodeItem(ep, ep.guid.equals(original.guid)));
-                    moviesContainer.addView(makeSpacer(8));
+                    page.addView(makeEpisodeItem(ep, ep.guid.equals(original.guid)));
+                    page.addView(makeSpacer(8));
                 }
             }
-            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
+            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
+                AppLog.e("Episodes", "episode/list 失败: " + t.getMessage());
+                if (attempt == 0) {
+                    new Handler(Looper.getMainLooper()).postDelayed(
+                            () -> loadEpisodesForSeason(seasonGuid, seasonNumber, original, 1), 1500);
+                }
+            }
         });
     }
 

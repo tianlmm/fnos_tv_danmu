@@ -1,7 +1,7 @@
 {
-  "versionCode": 65,
-  "versionName": "1.5.4",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.4/FNTV_1.5.4.apk",
-  "changelog": "1.详情页支持下拉刷新：重新拉取 play/info 与季/集列表\n2.刷新时会清掉季列表的去重标记，保证真的重新请求",
+  "versionCode": 66,
+  "versionName": "1.5.5",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.5/FNTV_1.5.5.apk",
+  "changelog": "1.季页面（第 N 季的集列表）也支持下拉刷新\n2.季页面进入时若首次返回空，1.2 秒自动重试一次（失败则 1.5 秒重试）\n3.日志新增 D/Episodes 记录每季拉到的集数",
   "forceUpdate": false
 }
