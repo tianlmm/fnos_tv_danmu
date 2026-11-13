@@ -1,7 +1,7 @@
 {
-  "versionCode": 67,
-  "versionName": "1.5.6",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.6/FNTV_1.5.6.apk",
-  "changelog": "1.某季集为空时，自动用父文件夹 guid 再查一次（第 4 级兜底）\n2.集列表请求去重，刷新与自动重试不再叠加\n3.80 集的长列表分批渲染（每批 30 集 + 加载更多）\n4.空数据显示「该季暂无剧集」，不再是空白页",
+  "versionCode": 68,
+  "versionName": "1.5.7",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.7/FNTV_1.5.7.apk",
+  "changelog": "1.季的集列表按 1.2s/4s/8s/15s 自动重试（扩展抓取慢，首次常返回空），期间显示「正在准备剧集…」\n2.拉到的集列表做内存缓存，再次进入秒开\n3.季卡片显示真实集数（取 numberOfEpisodes）",
   "forceUpdate": false
 }
