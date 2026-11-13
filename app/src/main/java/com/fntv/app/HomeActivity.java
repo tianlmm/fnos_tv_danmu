@@ -1641,7 +1641,38 @@ public class HomeActivity extends AppCompatActivity {
                         || response.body().data == null || response.body().data.isEmpty()) {
                     // 集 guid 查不到季 → 用父级 guid 再试一次
                     if (altGuid == null || altGuid.isEmpty()) {
-                        AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，且 parentGuid 为空，无法回退");
+                        AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，且 parentGuid 为空，改用 episode/list 直接列集");
+                        // 扩展里很多「文件夹」里直接就是集，没有季这一层 → 直接拉 episode/list
+                        apiManager.getApi().getEpisodeList(itemGuid).enqueue(new Callback<ApiResponse<List<PlayListItem>>>() {
+                            @Override
+                            public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
+                                                   Response<ApiResponse<List<PlayListItem>>> response) {
+                                if (!response.isSuccessful() || response.body() == null
+                                        || response.body().code != 0 || response.body().data == null
+                                        || response.body().data.isEmpty()) {
+                                    AppLog.d("Seasons", "episode/list(" + itemGuid + ") 也为空");
+                                    return;
+                                }
+                                List<PlayListItem> eps = response.body().data;
+                                AppLog.d("Seasons", "episode/list(" + itemGuid + ") → " + eps.size() + " 集");
+                                TextView eh = new TextView(HomeActivity.this);
+                                eh.setLayoutParams(new LinearLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                                eh.setPadding(0, 10, 0, 10);
+                                eh.setText("剧集（" + eps.size() + "）");
+                                eh.setTextColor(getResources().getColor(R.color.text_primary));
+                                eh.setTextSize(18);
+                                eh.setTypeface(Typeface.DEFAULT_BOLD);
+                                content.addView(eh);
+                                for (PlayListItem ep : eps) {
+                                    content.addView(makeEpisodeItem(ep, ep.guid != null && ep.guid.equals(item.guid)));
+                                    content.addView(makeSpacer(8));
+                                }
+                            }
+                            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
+                                AppLog.e("Seasons", "episode/list(" + itemGuid + ") 失败: " + t.getMessage());
+                            }
+                        });
                     }
                     if (altGuid != null && !altGuid.isEmpty()) {
                         AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，改用父级 " + altGuid);
