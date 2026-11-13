@@ -1,7 +1,7 @@
 {
-  "versionCode": 69,
-  "versionName": "1.5.8",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.8/FNTV_1.5.8.apk",
-  "changelog": "1.从详情页返回首页不再重新请求 mediadb/list，直接用内存数据重建，消除闪烁\n2.各媒体库预览做缓存，返回时先铺上缓存内容再后台刷新",
+  "versionCode": 70,
+  "versionName": "1.5.9",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.9/FNTV_1.5.9.apk",
+  "changelog": "1.返回首页不再重建视图：进详情时把首页 View 摘下暂存，返回时原样贴回（图片/滚动位置都保留）\n2.彻底消除从详情页返回时的闪烁",
   "forceUpdate": false
 }

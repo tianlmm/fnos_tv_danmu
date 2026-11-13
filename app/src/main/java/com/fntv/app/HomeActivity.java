@@ -318,6 +318,7 @@ public class HomeActivity extends AppCompatActivity {
         savedDetailItem = null; savedDetailInfo = null; savedBrowseList = null; savedBrowseGuid = null;
         savedLiveChannelTitle = null;
         showingEpisodes = false;
+        savedOverviewChildren = null;
         moviesContainer.removeAllViews();
         showingOverview = true;
         overviewBuilt = true;
@@ -375,6 +376,32 @@ public class HomeActivity extends AppCompatActivity {
             List<PlayListItem> cached = previewCache.get(lib.guid);
             if (cached != null && !cached.isEmpty()) fillPreview(lib.guid, cached);
         }
+        overviewAttached = true;
+    }
+
+    /** 离开首页（进详情/季/直播等）时把首页视图摘下来存着，不销毁 */
+    private void detachOverview() {
+        if (savedOverviewChildren != null || !overviewAttached) {
+            moviesContainer.removeAllViews();
+            return;
+        }
+        savedOverviewChildren = new java.util.ArrayList<>();
+        while (moviesContainer.getChildCount() > 0) {
+            View v = moviesContainer.getChildAt(0);
+            moviesContainer.removeViewAt(0);
+            savedOverviewChildren.add(v);
+        }
+        overviewAttached = false;
+    }
+
+    /** 返回首页：优先把之前摘下的视图贴回去（图片、滚动位置都还在） */
+    private boolean attachOverview() {
+        if (savedOverviewChildren == null) return false;
+        moviesContainer.removeAllViews();
+        for (View v : savedOverviewChildren) moviesContainer.addView(v);
+        savedOverviewChildren = null;
+        overviewAttached = true;
+        return true;
     }
 
     /** 从详情页/季页返回首页：用内存里的媒体库与预览缓存立即重建，不重新请求 mediadb/list */
@@ -383,7 +410,14 @@ public class HomeActivity extends AppCompatActivity {
             loadOverview();
             return;
         }
-        AppLog.d("Overview", "返回首页：用缓存重建（" + mediaLibraries.size() + " 个媒体库）");
+        showingOverview = true;
+        showingEpisodes = false;
+        savedDetailItem = null; savedDetailInfo = null;
+        if (attachOverview()) {
+            AppLog.d("Overview", "返回首页：贴回原有视图（不重建，无闪烁）");
+            return;
+        }
+        AppLog.d("Overview", "返回首页：无暂存视图，用缓存重建");
         loadingPreviews = false;
         showOverview();
         loadAllPreviews();
@@ -707,6 +741,9 @@ public class HomeActivity extends AppCompatActivity {
     private final java.util.Map<String, List<PlayListItem>> episodesCache = new java.util.HashMap<>();
     /** 各媒体库首页预览缓存：从详情页返回时先按缓存重建，避免整页闪一下 */
     private final java.util.Map<String, List<PlayListItem>> previewCache = new java.util.HashMap<>();
+    /** 首页视图被「摘下」暂存，返回时直接贴回，避免重建导致闪烁 */
+    private java.util.List<View> savedOverviewChildren;
+    private boolean overviewAttached = false;
     /** 扩展抓取有延迟，首个请求常常返回空，按这个节奏重试（毫秒） */
     private static final long[] EPISODE_RETRY_DELAYS = {1200, 4000, 8000, 15000};
 
@@ -943,7 +980,7 @@ public class HomeActivity extends AppCompatActivity {
         currentBrowseContainer = container;
         currentBrowseLoading = loadingView;
 
-        container.removeAllViews();
+        if (container == moviesContainer) detachOverview(); else container.removeAllViews();
         loadingView.setVisibility(View.VISIBLE);
 
         String sortColumn = libSortColumnIndex == 0 ? "create_time" : "release_date";
@@ -1235,7 +1272,7 @@ public class HomeActivity extends AppCompatActivity {
         savedBrowseList = null; savedBrowseGuid = null;
         showingOverview = false;
         showingEpisodes = false;
-        moviesContainer.removeAllViews();
+        detachOverview();
         tvMoviesLoading.setVisibility(View.VISIBLE);
         tvMoviesLoading.setText("加载中...");
 
@@ -1264,7 +1301,7 @@ public class HomeActivity extends AppCompatActivity {
     /** 构建详情页（自动适应横竖屏） */
 
     private void buildDetailPage(PlayListItem item, PlayInfoResponse info) {
-        moviesContainer.removeAllViews();
+        detachOverview();
         savedDetailItem = item; savedDetailInfo = info;
 
         boolean isLandscape = getResources().getConfiguration().orientation
@@ -1793,7 +1830,7 @@ public class HomeActivity extends AppCompatActivity {
     private void loadEpisodesForSeason(final String seasonGuid, final int seasonNumber,
                                        final PlayListItem original) {
         showingEpisodes = true;
-        moviesContainer.removeAllViews();
+        detachOverview();
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setLayoutParams(new LinearLayout.LayoutParams(
@@ -1801,7 +1838,7 @@ public class HomeActivity extends AppCompatActivity {
         moviesContainer.addView(wrapWithRefresh(page, "季 " + seasonNumber, () -> {
             episodesLoading.clear();
             episodesCache.remove(seasonGuid);
-            moviesContainer.removeAllViews();
+            detachOverview();
             loadEpisodesForSeason(seasonGuid, seasonNumber, original);
         }));
 
@@ -2010,7 +2047,7 @@ public class HomeActivity extends AppCompatActivity {
 
     private void showEpisodes(List<PlayListItem> eps, int sn, PlayListItem original) {
         showingEpisodes = true;
-        moviesContainer.removeAllViews();
+        detachOverview();
 
         // 标题
         TextView h = new TextView(this);
@@ -2884,7 +2921,7 @@ public class HomeActivity extends AppCompatActivity {
         showingEpisodes = false;
         showingOverview = false;
         savedLiveChannelTitle = "直播频道";
-        moviesContainer.removeAllViews();
+        detachOverview();
         tvMoviesLoading.setVisibility(View.VISIBLE);
         tvMoviesLoading.setText("加载直播频道...");
 
