@@ -1,7 +1,7 @@
 {
-  "versionCode": 68,
-  "versionName": "1.5.7",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.7/FNTV_1.5.7.apk",
-  "changelog": "1.季的集列表按 1.2s/4s/8s/15s 自动重试（扩展抓取慢，首次常返回空），期间显示「正在准备剧集…」\n2.拉到的集列表做内存缓存，再次进入秒开\n3.季卡片显示真实集数（取 numberOfEpisodes）",
+  "versionCode": 69,
+  "versionName": "1.5.8",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.8/FNTV_1.5.8.apk",
+  "changelog": "1.从详情页返回首页不再重新请求 mediadb/list，直接用内存数据重建，消除闪烁\n2.各媒体库预览做缓存，返回时先铺上缓存内容再后台刷新",
   "forceUpdate": false
 }

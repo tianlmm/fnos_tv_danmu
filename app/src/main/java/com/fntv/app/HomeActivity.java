@@ -369,6 +369,25 @@ public class HomeActivity extends AppCompatActivity {
             moviesContainer.addView(e);
         }
         buildLibTabs();
+
+        // 有缓存就先铺上，避免返回首页时整屏空白再一张张长出来
+        for (MediaDbItem lib : mediaLibraries) {
+            List<PlayListItem> cached = previewCache.get(lib.guid);
+            if (cached != null && !cached.isEmpty()) fillPreview(lib.guid, cached);
+        }
+    }
+
+    /** 从详情页/季页返回首页：用内存里的媒体库与预览缓存立即重建，不重新请求 mediadb/list */
+    private void restoreOverview() {
+        if (mediaLibraries.isEmpty()) {
+            loadOverview();
+            return;
+        }
+        AppLog.d("Overview", "返回首页：用缓存重建（" + mediaLibraries.size() + " 个媒体库）");
+        loadingPreviews = false;
+        showOverview();
+        loadAllPreviews();
+        loadContinueWatching();
     }
 
     /** 顶部媒体库标签条：点哪个就滚到对应分区 */
@@ -474,6 +493,7 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void fillPreview(String libGuid, List<PlayListItem> items) {
+        if (items != null && !items.isEmpty()) previewCache.put(libGuid, items);
         for (int i = 0; i < moviesContainer.getChildCount(); i++) {
             View v = moviesContainer.getChildAt(i);
             if (v instanceof LinearLayout && ("preview_" + libGuid).equals(v.getTag())) {
@@ -685,6 +705,8 @@ public class HomeActivity extends AppCompatActivity {
     private final java.util.Set<String> episodesLoading = new java.util.HashSet<>();
     /** 已成功拉到的集列表，再次进入同一季直接复用 */
     private final java.util.Map<String, List<PlayListItem>> episodesCache = new java.util.HashMap<>();
+    /** 各媒体库首页预览缓存：从详情页返回时先按缓存重建，避免整页闪一下 */
+    private final java.util.Map<String, List<PlayListItem>> previewCache = new java.util.HashMap<>();
     /** 扩展抓取有延迟，首个请求常常返回空，按这个节奏重试（毫秒） */
     private static final long[] EPISODE_RETRY_DELAYS = {1200, 4000, 8000, 15000};
 
@@ -2979,7 +3001,7 @@ public class HomeActivity extends AppCompatActivity {
                 return true;
             }
             if (!showingOverview) {
-                loadOverview();
+                restoreOverview();
                 return true;
             }
             if (backPressedTime + 2000 > System.currentTimeMillis()) {
