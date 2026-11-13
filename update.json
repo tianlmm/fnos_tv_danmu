@@ -1,7 +1,7 @@
 {
-  "versionCode": 54,
-  "versionName": "1.4.3",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.3/FNTV_1.4.3.apk",
-  "changelog": "1.顶部标签去掉「全部」\n2.标签左右间距改为 10dp",
+  "versionCode": 55,
+  "versionName": "1.4.4",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.4/FNTV_1.4.4.apk",
+  "changelog": "1.顶部标签胶囊高度由撑满整行（62dp）改为固定 38dp，外框真正变小\n2.标签行高度 62dp → 56dp，首页顶部更紧凑",
   "forceUpdate": false
 }

@@ -379,8 +379,9 @@ public class HomeActivity extends AppCompatActivity {
 
     private View makeLibChip(String text, final Runnable onClick) {
         TextView tv = new TextView(this);
+        // 胶囊高度固定 38dp，不再撑满整行（之前是 MATCH_PARENT=62dp，看着"字小了框没小"）
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                ViewGroup.LayoutParams.WRAP_CONTENT, dpToPx(38));
         lp.setMargins(dpToPx(10), 0, dpToPx(10), 0);
         tv.setLayoutParams(lp);
         tv.setText(text);

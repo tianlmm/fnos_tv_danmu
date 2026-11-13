@@ -72,7 +72,7 @@ DPAD 遥控器友好
             <HorizontalScrollView
                 android:id="@+id/libTabScroll"
                 android:layout_width="match_parent"
-                android:layout_height="62dp"
+                android:layout_height="56dp"
                 android:scrollbars="none">
 
                 <LinearLayout
