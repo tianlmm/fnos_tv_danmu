@@ -1572,6 +1572,9 @@ public class HomeActivity extends AppCompatActivity {
                     && !info.parentGuid.equals(item.guid)) {
                 altGuid = info.parentGuid;
             }
+            AppLog.d("Detail", "进入详情 item.guid=" + item.guid + " type=" + info.type
+                    + " info.guid=" + info.guid + " parentGuid=" + (info.parentGuid == null ? "null" : info.parentGuid)
+                    + " altGuid=" + altGuid);
             loadSeasons(content, item.guid, item, playBtn, pTs, altGuid);
         }
 
@@ -1637,6 +1640,9 @@ public class HomeActivity extends AppCompatActivity {
                 if (!response.isSuccessful() || response.body() == null || response.body().code != 0
                         || response.body().data == null || response.body().data.isEmpty()) {
                     // 集 guid 查不到季 → 用父级 guid 再试一次
+                    if (altGuid == null || altGuid.isEmpty()) {
+                        AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，且 parentGuid 为空，无法回退");
+                    }
                     if (altGuid != null && !altGuid.isEmpty()) {
                         AppLog.d("Seasons", "season/list(" + itemGuid + ") 为空，改用父级 " + altGuid);
                         // 去掉上一次加的「选择剧集」标题，避免重复
@@ -1652,6 +1658,7 @@ public class HomeActivity extends AppCompatActivity {
                     return;
                 }
                 List<PlayListItem> seasons = response.body().data;
+                AppLog.d("Seasons", "season/list(" + itemGuid + ") → " + seasons.size() + " 项");
                 for (final PlayListItem season : seasons) {
                     LinearLayout card = new LinearLayout(HomeActivity.this);
                     card.setOrientation(LinearLayout.HORIZONTAL);

@@ -1,7 +1,7 @@
 {
-  "versionCode": 62,
-  "versionName": "1.5.1",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.1/FNTV_1.5.1.apk",
-  "changelog": "1.修复扩展片源第一次进详情页看不到集数、必须播过一遍才出现\n2.季列表为空时自动用 play/info 的 parentGuid 再查一次",
+  "versionCode": 63,
+  "versionName": "1.5.2",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.2/FNTV_1.5.2.apk",
+  "changelog": "1.详情页增加诊断日志：进入时打印 item.guid / type / parentGuid\n2.season/list 结果条数、为空时的回退决策都会写日志（D/Seasons）",
   "forceUpdate": false
 }
