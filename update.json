@@ -1,7 +1,7 @@
 {
-  "versionCode": 58,
-  "versionName": "1.4.7",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.7/FNTV_1.4.7.apk",
-  "changelog": "1.继续观看：返回首页后 2.5 秒再拉一次，确保刚看过的片子排到最前且进度更新（play/record 比 play/list 晚约 150ms）\n2.日志额外打印继续观看首条标题",
+  "versionCode": 59,
+  "versionName": "1.4.8",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.8/FNTV_1.4.8.apk",
+  "changelog": "1.适配全面屏/手势导航：内容延伸到状态栏与导航栏下方，小白条区域不再有黑色条带\n2.白天模式使用深色状态栏/导航栏图标，夜间模式用浅色\n3.列表与底部菜单自动避让系统手势条",
   "forceUpdate": false
 }

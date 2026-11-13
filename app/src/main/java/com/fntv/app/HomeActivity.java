@@ -110,6 +110,7 @@ public class HomeActivity extends AppCompatActivity {
         t0 = System.currentTimeMillis();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+        applyEdgeToEdge();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(Color.TRANSPARENT);
@@ -2753,4 +2754,43 @@ public class HomeActivity extends AppCompatActivity {
         }
         return super.onKeyDown(keyCode, event);
     }
+    /** 沉浸式（小白条/状态栏）：内容延伸到系统栏下方，并给内容加 padding 避让 */
+    private void applyEdgeToEdge() {
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            android.view.Window w = getWindow();
+            w.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            w.setStatusBarColor(0x00000000);
+            w.setNavigationBarColor(0x00000000);
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                w.setStatusBarContrastEnforced(false);
+                w.setNavigationBarContrastEnforced(false);
+            }
+            boolean night = (getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            int flags = android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            if (!night && android.os.Build.VERSION.SDK_INT >= 23) {
+                flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            }
+            if (!night && android.os.Build.VERSION.SDK_INT >= 26) {
+                flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            }
+            w.getDecorView().setSystemUiVisibility(flags);
+        }
+        if (android.os.Build.VERSION.SDK_INT < 20) return;   // API 19 没有 WindowInsets
+        final android.view.View root = findViewById(android.R.id.content);
+        if (root == null) return;
+        final int padTop = root.getPaddingTop();
+        final int padBottom = root.getPaddingBottom();
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int top = insets.getSystemWindowInsetTop();
+            int bottom = insets.getSystemWindowInsetBottom();
+            v.setPadding(v.getPaddingLeft(), padTop + top, v.getPaddingRight(), padBottom + bottom);
+            return insets;
+        });
+        root.requestApplyInsets();
+    }
+
 }
