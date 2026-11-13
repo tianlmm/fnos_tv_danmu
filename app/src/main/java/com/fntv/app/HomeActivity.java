@@ -1298,7 +1298,7 @@ public class HomeActivity extends AppCompatActivity {
             svL.addView(contentL);
             rootRow.addView(svL);
 
-            moviesContainer.addView(rootRow);
+            moviesContainer.addView(wrapDetailWithRefresh(rootRow, item));
         } else {
             // ====== 竖屏：原布局 ======
             androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(this);
@@ -1331,8 +1331,26 @@ public class HomeActivity extends AppCompatActivity {
             buildDetailContent(content, item, info, epTitle, series, epNum, pUrl);
 
             scrollView.addView(content);
-            moviesContainer.addView(scrollView);
+            moviesContainer.addView(wrapDetailWithRefresh(scrollView, item));
         }
+    }
+
+    /** 详情页包一层下拉刷新：重新请求 play/info 并重建（季/集列表也会重新加载） */
+    private View wrapDetailWithRefresh(View inner, final PlayListItem item) {
+        androidx.swiperefreshlayout.widget.SwipeRefreshLayout srl =
+                new androidx.swiperefreshlayout.widget.SwipeRefreshLayout(this);
+        srl.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        srl.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+        srl.addView(inner, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        srl.setOnRefreshListener(() -> {
+            AppLog.d("Detail", "下拉刷新详情 " + item.guid);
+            seasonsLoading.clear();          // 允许重新请求季列表
+            srl.setRefreshing(false);
+            showDetail(item);
+        });
+        return srl;
     }
 
     /** 构建详情页的核心内容（元数据、播放按钮、剧集列表） */

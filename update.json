@@ -1,7 +1,7 @@
 {
-  "versionCode": 64,
-  "versionName": "1.5.3",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.3/FNTV_1.5.3.apk",
-  "changelog": "1.扩展片源没有「季」这一层时，详情页直接列出集（episode/list 兜底）\n2.三种兜底顺序：season/list(本条目) → season/list(父级) → episode/list(本条目)\n3.全程写日志（D/Detail、D/Seasons）",
+  "versionCode": 65,
+  "versionName": "1.5.4",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.4/FNTV_1.5.4.apk",
+  "changelog": "1.详情页支持下拉刷新：重新拉取 play/info 与季/集列表\n2.刷新时会清掉季列表的去重标记，保证真的重新请求",
   "forceUpdate": false
 }
