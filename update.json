@@ -1,7 +1,7 @@
 {
-  "versionCode": 60,
-  "versionName": "1.4.9",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.9/FNTV_1.4.9.apk",
-  "changelog": "1.小白条区域色差修复：底部菜单栏延伸到手势条下方，颜色与菜单栏完全一致\n2.顶部仍避让状态栏，内容不再顶到刘海/状态栏",
+  "versionCode": 61,
+  "versionName": "1.5.0",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.5.0/FNTV_1.5.0.apk",
+  "changelog": "1.在线扩展片源直接按 HLS 起播，不再先报一次 Source error 再切换（少 1~2 秒黑屏）\n2.如果猜错（确实是普通视频）会自动切回渐进式播放\n3.详情页季列表请求去重，之前会并发 5~6 个 season/list，最慢一个要 12 秒",
   "forceUpdate": false
 }

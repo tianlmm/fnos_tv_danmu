@@ -679,6 +679,8 @@ public class HomeActivity extends AppCompatActivity {
 
     /** 缓存的「继续观看」列表：页面重建时先渲染，避免刚看完返回时整行消失 */
     private java.util.List<PlayListItem> lastContinueItems = new java.util.ArrayList<>();
+    /** 正在请求中的季列表，避免详情页重建时同一个 guid 并发发 5~6 个请求 */
+    private final java.util.Set<String> seasonsLoading = new java.util.HashSet<>();
 
     private void loadContinueWatching() {
         loadContinueWatching(0);
@@ -1600,6 +1602,11 @@ public class HomeActivity extends AppCompatActivity {
     /** 加载季列表（从 season/list 接口获取） */
     private void loadSeasons(final LinearLayout content, final String itemGuid, final PlayListItem item,
                               final Button playBtn, final long pTs) {
+        if (seasonsLoading.contains(itemGuid)) {
+            AppLog.d("Seasons", "跳过重复请求 " + itemGuid);
+            return;
+        }
+        seasonsLoading.add(itemGuid);
         TextView h = new TextView(this);
         h.setLayoutParams(new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -1614,6 +1621,7 @@ public class HomeActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ApiResponse<List<PlayListItem>>> call,
                                    Response<ApiResponse<List<PlayListItem>>> response) {
+                seasonsLoading.remove(itemGuid);
                 if (!response.isSuccessful() || response.body() == null || response.body().code != 0
                         || response.body().data == null || response.body().data.isEmpty()) return;
                 List<PlayListItem> seasons = response.body().data;
@@ -1657,7 +1665,9 @@ public class HomeActivity extends AppCompatActivity {
                     content.addView(makeSpacer(12));
                 }
             }
-            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {}
+            @Override public void onFailure(Call<ApiResponse<List<PlayListItem>>> call, Throwable t) {
+                seasonsLoading.remove(itemGuid);
+            }
         });
     }
 

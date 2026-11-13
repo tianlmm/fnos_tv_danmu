@@ -132,7 +132,9 @@ public class CloudStreamManager {
             url = baseUrl + "/v/api/v1/media/range/" + mediaGuid;
             Log.d(TAG, "播放模式: 代理 " + url);
         }
-        boolean hls = url.contains(".m3u8") || "m3u8".equalsIgnoreCase(lastContainer);
+        // 三种判定：显式 .m3u8 / stream 返回 m3u8 容器 / 在线扩展的 /media/range 且 stream 没给容器
+        boolean hls = url.contains(".m3u8") || "m3u8".equalsIgnoreCase(lastContainer)
+                || (lastContainer.isEmpty() && url.contains("/media/range/"));
         if (!hls && !cloudDirectUrl.isEmpty()) {
             hls = isStrmFile;
             Log.d(TAG, "直链模式: isStrm=" + isStrmFile + " useHls=" + hls);

@@ -645,6 +645,15 @@ public class PlayerActivity extends AppCompatActivity {
                 // 服务端以 /media/range 形式返回 HLS（fnmedia-ext 等）：URL 不含 .m3u8，
                 // 客户端按后缀判断成了渐进式，必然 Source error。这里按响应 Content-Type 纠正。
                 String ct = OkHttpExoDataSource.lastContentType;
+                // 猜成 HLS 但服务端其实给的是普通视频：切回渐进式
+                if (useHls && ct != null && !ct.toLowerCase().contains("mpegurl")
+                        && !ct.toLowerCase().contains("m3u8") && retryCount == 0) {
+                    useHls = false;
+                    retryCount = 1;
+                    AppLog.d(TAG, "Content-Type=" + ct + "，切回渐进式");
+                    switchMediaSource(false);
+                    return;
+                }
                 if (!useHls && ct != null && ct.toLowerCase().contains("mpegurl")) {
                     useHls = true;
                     retryCount = 0;
