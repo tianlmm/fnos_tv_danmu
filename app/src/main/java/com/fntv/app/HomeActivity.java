@@ -2784,10 +2784,25 @@ public class HomeActivity extends AppCompatActivity {
         if (root == null) return;
         final int padTop = root.getPaddingTop();
         final int padBottom = root.getPaddingBottom();
+        final android.view.View tabBar = findViewById(R.id.tabBar);
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int top = insets.getSystemWindowInsetTop();
             int bottom = insets.getSystemWindowInsetBottom();
-            v.setPadding(v.getPaddingLeft(), padTop + top, v.getPaddingRight(), padBottom + bottom);
+            // 顶部避让状态栏；底部不再给根布局留白，而是让底部菜单栏本身延伸到手势条下方，
+            // 这样小白条区域显示的就是菜单栏的同一种颜色，不会出现一条色差
+            v.setPadding(v.getPaddingLeft(), padTop + top, v.getPaddingRight(), padBottom);
+            if (tabBar != null) {
+                int baseH = (int) (52 * getResources().getDisplayMetrics().density);
+                android.view.ViewGroup.LayoutParams lp = tabBar.getLayoutParams();
+                if (lp.height != baseH + bottom) {
+                    lp.height = baseH + bottom;
+                    tabBar.setLayoutParams(lp);
+                }
+                if (tabBar.getPaddingBottom() != bottom) {
+                    tabBar.setPadding(tabBar.getPaddingLeft(), tabBar.getPaddingTop(),
+                            tabBar.getPaddingRight(), bottom);
+                }
+            }
             return insets;
         });
         root.requestApplyInsets();
