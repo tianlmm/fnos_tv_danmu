@@ -1,7 +1,7 @@
 {
-  "versionCode": 57,
-  "versionName": "1.4.6",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.6/FNTV_1.4.6.apk",
-  "changelog": "1.继续观看：拉不到记录时改为依次重试 1.5s / 3s / 6s（之前只重试一次，进度上报慢就漏了）\n2.日志新增 play/list 返回条数与缓存条数，便于定位",
+  "versionCode": 58,
+  "versionName": "1.4.7",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.4.7/FNTV_1.4.7.apk",
+  "changelog": "1.继续观看：返回首页后 2.5 秒再拉一次，确保刚看过的片子排到最前且进度更新（play/record 比 play/list 晚约 150ms）\n2.日志额外打印继续观看首条标题",
   "forceUpdate": false
 }

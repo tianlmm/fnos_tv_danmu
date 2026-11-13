@@ -709,6 +709,13 @@ public class HomeActivity extends AppCompatActivity {
                 }
                 lastContinueItems = data;
                 renderContinue(data);
+                AppLog.d("Continue", "首条=" + (data.get(0).title == null ? "?" : data.get(0).title));
+                // 播放进度上报通常在返回后才写入（日志里 play/list 比 play/record 早 ~150ms），
+                // 所以再拉一次，让刚看过的片子排到最前、进度也更新
+                if (attempt == 0) {
+                    new Handler(Looper.getMainLooper())
+                            .postDelayed(() -> loadContinueWatching(1), 2500);
+                }
             }
 
             @Override
