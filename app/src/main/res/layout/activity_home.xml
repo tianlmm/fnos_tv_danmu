@@ -142,7 +142,7 @@ DPAD 遥控器友好
                 android:layout_marginLeft="8dp"
                 android:layout_marginRight="8dp"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_input"
+                android:background="@drawable/bg_row_focus"
                 android:hint="搜索媒体库..."
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_hint"
@@ -307,7 +307,7 @@ DPAD 遥控器友好
                             android:id="@+id/rlDecoderSetting"
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:paddingLeft="12dp"
                             android:paddingRight="12dp">
@@ -338,7 +338,7 @@ DPAD 遥控器友好
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:paddingLeft="12dp"
                             android:paddingRight="12dp">
@@ -369,7 +369,7 @@ DPAD 遥控器友好
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:paddingLeft="12dp"
                             android:paddingRight="12dp">
@@ -400,7 +400,7 @@ DPAD 遥控器友好
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:paddingLeft="12dp"
                             android:paddingRight="12dp">
@@ -431,7 +431,7 @@ DPAD 遥控器友好
                             android:layout_width="match_parent"
                             android:layout_height="52dp"
                             android:layout_marginTop="8dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:paddingLeft="12dp"
                             android:paddingRight="12dp">
@@ -510,7 +510,7 @@ DPAD 遥控器友好
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
                             android:layout_marginTop="10dp"
-                            android:background="@drawable/bg_input"
+                            android:background="@drawable/bg_row_focus"
                             android:focusable="true"
                             android:text="问题反馈"
                             android:textAllCaps="false"

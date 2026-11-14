@@ -37,4 +37,6 @@
     <color name="tab_sel_stroke">#FF3370FF</color>
     <color name="dialog_bg">#FFFFFFFF</color>
     <color name="dialog_stroke">#FFE0E0E6</color>
+    <color name="focus_bg">#FFE3EBFF</color>
+    <color name="focus_stroke">#FF3370FF</color>
 </resources>

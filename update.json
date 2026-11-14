@@ -1,7 +1,7 @@
 {
-  "versionCode": 71,
-  "versionName": "1.6.0",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.0/FNTV_1.6.0.apk",
-  "changelog": "1.修复进入剧集页后无法上下滑动（SwipeRefreshLayout 吞掉了滚动手势）\n2.下拉刷新改到外层 ScrollView 上实现，不拦截子 View 的点击与滚动\n3.详情、季、首页都支持下拉刷新",
+  "versionCode": 72,
+  "versionName": "1.6.1-beta",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.1-beta/FNTV_1.6.1-beta.apk",
+  "changelog": "【TV 焦点测试版】\n1.播放界面底部按钮（播放/±10秒/倍速/比例/选集/下一集/画质/亮度/信息…）增加遥控器焦点高亮\n2.设置页各行、弹幕设置/跳过设置等对话框的行也加了焦点边框\n3.焦点态：浅色底 + 2dp 主题色描边（白天蓝框，夜间绿框）",
   "forceUpdate": false
 }
