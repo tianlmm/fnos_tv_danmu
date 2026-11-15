@@ -20,7 +20,7 @@ public class SimpleImageLoader {
 
     private static final String TAG = "ImageLoader";
     /** 内存缓存：取可用堆的 1/8，上限 96MB（海报多，缓存太小会导致切页重复加载） */
-    private static final int CACHE_BYTES = Math.min(96 * 1024 * 1024,
+    private static final int CACHE_BYTES = Math.min(48 * 1024 * 1024,
             (int) Math.min(Integer.MAX_VALUE, Runtime.getRuntime().maxMemory() / 8));
     /** 404/解码失败的图片记下来，避免反复请求 */
     private static final java.util.Set<String> failed =

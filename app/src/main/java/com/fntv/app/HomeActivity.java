@@ -169,6 +169,7 @@ public class HomeActivity extends AppCompatActivity {
         if (btnHomeSearch != null) btnHomeSearch.setOnClickListener(v -> showSearchDialog());
         startHomeClock();
         setupPullToRefresh();
+        startMemoryLog();
         applyResponsivePaddings();
         tvDecoderValue = findViewById(R.id.tvDecoderValue);
         btnLogout = findViewById(R.id.btnLogout);
@@ -517,7 +518,8 @@ public class HomeActivity extends AppCompatActivity {
         if (loadingPreviews) return;
         loadingPreviews = true;
         // 错开 140ms 逐个发，避免一次性 14 个 item/list 把服务端和日志压满
-        for (int i = 0; i < mediaLibraries.size(); i++) {
+        int maxLibs = isTvDevice() ? Math.min(8, mediaLibraries.size()) : mediaLibraries.size();
+        for (int i = 0; i < maxLibs; i++) {
             final MediaDbItem lib = mediaLibraries.get(i);
             new Handler(Looper.getMainLooper()).postDelayed(() -> requestPreview(lib), i * 140L);
         }
@@ -540,7 +542,8 @@ public class HomeActivity extends AppCompatActivity {
                     }
                     // 取前6个填到预览容器
                     List<PlayListItem> items = response.body().data.list;
-                    if (items.size() > 20) items = items.subList(0, 20);
+                    int cap = isTvDevice() ? 12 : 20;
+                    if (items.size() > cap) items = items.subList(0, cap);
                     fillPreview(guid, items);
                 }
                 @Override public void onFailure(Call<ApiResponse<ItemListResponse>> call, Throwable t) {}
@@ -569,7 +572,10 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void fillPreview(String libGuid, List<PlayListItem> items) {
-        if (items != null && !items.isEmpty()) previewCache.put(libGuid, items);
+        if (items != null && !items.isEmpty()) {
+            if (previewCache.size() > 40) previewCache.clear();
+            previewCache.put(libGuid, items);
+        }
         for (int i = 0; i < moviesContainer.getChildCount(); i++) {
             View v = moviesContainer.getChildAt(i);
             if (v instanceof LinearLayout && ("preview_" + libGuid).equals(v.getTag())) {
@@ -628,7 +634,8 @@ public class HomeActivity extends AppCompatActivity {
             return null;
         }
         String p = path.startsWith("/") ? path : "/" + path;
-        String fullUrl = baseUrl + "/v/api/v1/sys/img" + p + "?w=400";
+        int w = isTvDevice() ? 300 : 400;   // 电视端取小图，省内存
+        String fullUrl = baseUrl + "/v/api/v1/sys/img" + p + "?w=" + w;
         Log.d("PosterUrl", "poster=" + path + " -> " + fullUrl);
         return fullUrl;
     }
@@ -884,6 +891,29 @@ public class HomeActivity extends AppCompatActivity {
 
     // ==================== 横向滚动卡片 ====================
 
+
+    /** 是否是电视（TV）设备：电视内存小、网络慢，预览要克制 */
+    private boolean isTvDevice() {
+        android.app.UiModeManager um = (android.app.UiModeManager)
+                getSystemService(android.content.Context.UI_MODE_SERVICE);
+        return um != null && um.getCurrentModeType()
+                == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION;
+    }
+
+    /** 每 30 秒记录一次堆内存，便于排查电视端 OOM 闪退 */
+    private void startMemoryLog() {
+        final Handler h = new Handler(Looper.getMainLooper());
+        h.postDelayed(new Runnable() {
+            @Override public void run() {
+                Runtime rt = Runtime.getRuntime();
+                long used = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024);
+                long max = rt.maxMemory() / (1024 * 1024);
+                AppLog.d("Mem", "已用 " + used + "MB / 上限 " + max + "MB，预览缓存 "
+                        + previewCache.size() + " 库，集缓存 " + episodesCache.size() + " 季");
+                h.postDelayed(this, 30000);
+            }
+        }, 30000);
+    }
 
     /** 按屏幕方向计算卡片尺寸：竖屏一行 3 张出头，横屏按高度限制避免卡片过高 */
     private int[] computeCardSize() {

@@ -1,7 +1,7 @@
 {
-  "versionCode": 73,
-  "versionName": "1.6.2",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.2/FNTV_1.6.2.apk",
-  "changelog": "1.修复观看历史里目录类条目点进去黑屏无反应：现在会自动进详情页选集\n2.播放器遇到没有 media_guid 的条目会明确提示并返回，不再静默卡住\n3.日志新增 D/Continue 记录点击的条目类型与跳转方式",
+  "versionCode": 74,
+  "versionName": "1.6.3-beta",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.3-beta/FNTV_1.6.3-beta.apk",
+  "changelog": "【电视端稳定性测试版】\n1.电视端预览降载：只加载前 8 个媒体库、每库 12 张海报，海报取 w=300 小图\n2.图片内存缓存上限 96MB→48MB\n3.新增内存日志 D/Mem（每 30 秒），用于确认是否 OOM 导致闪退",
   "forceUpdate": false
 }
