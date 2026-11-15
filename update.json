@@ -1,7 +1,7 @@
 {
-  "versionCode": 74,
-  "versionName": "1.6.3-beta",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.3-beta/FNTV_1.6.3-beta.apk",
-  "changelog": "【电视端稳定性测试版】\n1.电视端预览降载：只加载前 8 个媒体库、每库 12 张海报，海报取 w=300 小图\n2.图片内存缓存上限 96MB→48MB\n3.新增内存日志 D/Mem（每 30 秒），用于确认是否 OOM 导致闪退",
+  "versionCode": 75,
+  "versionName": "1.6.3",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.3/FNTV_1.6.3.apk",
+  "changelog": "1.电视端预览降载：只加载前 8 个媒体库、每库 12 张海报，海报取 w=300 小图（大幅降低内存占用）\n2.图片内存缓存上限 96MB→48MB，预览缓存在超过 40 个库时自动清空\n3.新增内存日志 D/Mem（每 30 秒），便于排查 OOM 闪退\n4.观看历史里目录类条目改为进入详情页选集，不再黑屏\n5.播放界面与设置页增加遥控器焦点高亮（TV）",
   "forceUpdate": false
 }
