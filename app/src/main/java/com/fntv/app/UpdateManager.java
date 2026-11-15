@@ -117,6 +117,17 @@ public class UpdateManager {
                 int remoteVersion = json.optInt("versionCode", 0);
                 final String versionName = json.optString("versionName", "");
                 final String apkUrl = json.optString("apkUrl", "");
+                final java.util.List<String> apkUrls = new java.util.ArrayList<>();
+                org.json.JSONArray urlArr = json.optJSONArray("apkUrls");
+                if (urlArr != null) {
+                    for (int i = 0; i < urlArr.length(); i++) {
+                        String u = urlArr.optString(i, "");
+                        if (u != null && !u.isEmpty()) apkUrls.add(u);
+                    }
+                }
+                if (apkUrl != null && !apkUrl.isEmpty() && !apkUrls.contains(apkUrl)) {
+                    apkUrls.add(0, apkUrl);
+                }
                 final String changelog = json.optString("changelog", "暂无更新说明");
                 final boolean forceUpdate = json.optBoolean("forceUpdate", false);
 
@@ -133,7 +144,7 @@ public class UpdateManager {
                 final int fRemoteVersion = remoteVersion;
                 final String label = isTestInstall ? "测试安装（版本号不高于当前）" : "发现新版本 v" + versionName;
                 activity.runOnUiThread(() ->
-                        showUpdateDialog(label, changelog, forceUpdate, apkUrl, fRemoteVersion, isTestInstall));
+                        showUpdateDialog(label, changelog, forceUpdate, apkUrls, fRemoteVersion, isTestInstall));
 
             } catch (Exception e) {
                 Log.e(TAG, "检查更新异常", e);
@@ -148,7 +159,7 @@ public class UpdateManager {
     // ========== 更新弹窗 ==========
 
     private void showUpdateDialog(final String title, final String changelog,
-                                   final boolean forceUpdate, final String apkUrl,
+                                   final boolean forceUpdate, final java.util.List<String> apkUrls,
                                    final int remoteVersion, final boolean isTestInstall) {
         new android.app.AlertDialog.Builder(activity)
                 .setTitle(title)
@@ -156,7 +167,7 @@ public class UpdateManager {
                 .setCancelable(!forceUpdate)
                 .setPositiveButton(isTestInstall ? "测试安装器" : "立即更新", (dialog, which) -> {
                     dialog.dismiss();
-                    downloadAndInstall(apkUrl, remoteVersion, isTestInstall);
+                    downloadAndInstall(apkUrls, remoteVersion, isTestInstall);
                 })
                 .setNegativeButton(forceUpdate ? "退出应用" : "稍后再说", (dialog, which) -> {
                     if (forceUpdate) {
@@ -213,93 +224,102 @@ public class UpdateManager {
 
     // ========== 下载 ==========
 
-    private void downloadAndInstall(final String apkUrl, final int remoteVersion, final boolean isTestInstall) {
+    private void downloadAndInstall(final java.util.List<String> apkUrls, final int remoteVersion,
+                                    final boolean isTestInstall) {
         btnCheckUpdate.setText(isTestInstall ? "测试中..." : "下载中...");
         btnCheckUpdate.setEnabled(false);
         new Thread(() -> {
-            try {
-                HttpURLConnection c = (HttpURLConnection) new URL(apkUrl).openConnection();
-                c.setConnectTimeout(15000);
-                c.setReadTimeout(30000);
-                c.setInstanceFollowRedirects(true);
-                c.connect();
-                int respCode = c.getResponseCode();
-                if (respCode != 200) {
-                    activity.runOnUiThread(() -> {
-                        Toast.makeText(activity, "下载失败，服务器返回 " + respCode, Toast.LENGTH_LONG).show();
-                        resetBtn();
-                    });
-                    return;
-                }
+            File dir = new File(activity.getExternalFilesDir(null), "download");
+            if (!dir.exists()) dir.mkdirs();
+            final File apkFile = new File(dir, "FNTV_v" + remoteVersion + ".apk");
 
-                File dir = new File(activity.getExternalFilesDir(null), "download");
-                if (!dir.exists()) dir.mkdirs();
-                final File apkFile = new File(dir, "FNTV_v" + remoteVersion + ".apk");
-
-                final long total = Math.max(0, c.getContentLengthLong() > 0
-                        ? c.getContentLengthLong() : c.getContentLength());
-                InputStream is = c.getInputStream();
-                FileOutputStream fos = new FileOutputStream(apkFile);
-                byte[] buf = new byte[8192];
-                int n;
-                long read = 0;
-                int lastPct = -1;
-                long lastUi = 0;
-                while ((n = is.read(buf)) != -1) {
-                    fos.write(buf, 0, n);
-                    read += n;
-                    // 进度：每变化 1% 或每 300ms 刷新一次按钮文字
-                    long now = System.currentTimeMillis();
-                    int pct = total > 0 ? (int) (read * 100 / total) : -1;
-                    if (pct != lastPct || now - lastUi > 300) {
-                        lastPct = pct;
-                        lastUi = now;
-                        final String label = total > 0
-                                ? "下载中 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + "MB）"
-                                : "下载中 " + (read / 1024 / 1024) + "MB";
-                        activity.runOnUiThread(() -> btnCheckUpdate.setText(label));
+            String lastError = "";
+            for (int idx = 0; idx < apkUrls.size(); idx++) {
+                final String url = apkUrls.get(idx);
+                final int srcNo = idx + 1;
+                try {
+                    AppLog.d(TAG, "下载源 " + srcNo + "/" + apkUrls.size() + ": " + url);
+                    if (apkFile.exists()) apkFile.delete();
+                    if (downloadOne(url, apkFile, srcNo, apkUrls.size())) {
+                        finishDownload(apkFile, remoteVersion, isTestInstall);
+                        return;
                     }
+                    lastError = "源 " + srcNo + " 下载不完整";
+                } catch (Exception e) {
+                    lastError = e.getClass().getSimpleName() + ": " + e.getMessage();
+                    AppLog.e(TAG, "源 " + srcNo + " 失败: " + lastError);
                 }
-                fos.close();
-                is.close();
-                activity.runOnUiThread(() -> btnCheckUpdate.setText("校验中..."));
-
-                Log.d(TAG, "下载完成: " + apkFile.getAbsolutePath() + " (" + apkFile.length() + " bytes)");
-
-                // 检查 APK 文件头
-                java.io.RandomAccessFile raf = new java.io.RandomAccessFile(apkFile, "r");
-                byte[] header = new byte[4];
-                raf.read(header);
-                raf.close();
-                String headerStr = new String(header, "UTF-8");
-                Log.d(TAG, "APK 文件头: " + headerStr + " (" + bytesToHex(header) + ")");
-                if (!"PK".equals(headerStr.substring(0, 2))) {
-                    activity.runOnUiThread(() -> {
-                        Toast.makeText(activity, "下载文件不是有效的 APK（文件头异常）", Toast.LENGTH_LONG).show();
-                        resetBtn();
-                    });
-                    return;
-                }
-
-                // 签名校验
-                if (!verifyApkSignature(apkFile)) {
-                    activity.runOnUiThread(() -> {
-                        Toast.makeText(activity, "APK 签名校验失败，可能已被篡改", Toast.LENGTH_LONG).show();
-                        resetBtn();
-                    });
-                    return;
-                }
-
-                activity.runOnUiThread(() -> installApk(apkFile, isTestInstall));
-
-            } catch (Exception e) {
-                Log.e(TAG, "下载失败", e);
-                activity.runOnUiThread(() -> {
-                    Toast.makeText(activity, "下载失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                    resetBtn();
-                });
             }
+            final String err = lastError;
+            activity.runOnUiThread(() -> {
+                Toast.makeText(activity, "下载失败：" + err + "（可用浏览器打开 Release 页面手动下载）",
+                        Toast.LENGTH_LONG).show();
+                resetBtn();
+            });
         }).start();
+    }
+
+    /** 下载单个源；成功返回 true（文件头为 PK） */
+    private boolean downloadOne(String apkUrl, File apkFile, int srcNo, int srcTotal) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(apkUrl).openConnection();
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(30000);
+        c.setInstanceFollowRedirects(true);
+        c.connect();
+        int respCode = c.getResponseCode();
+        if (respCode != 200) {
+            AppLog.d(TAG, "源 " + srcNo + " 返回 " + respCode);
+            return false;
+        }
+        final long total = c.getContentLengthLong() > 0 ? c.getContentLengthLong() : c.getContentLength();
+        InputStream is = c.getInputStream();
+        FileOutputStream fos = new FileOutputStream(apkFile);
+        byte[] buf = new byte[8192];
+        int n;
+        long read = 0;
+        int lastPct = -1;
+        long lastUi = 0;
+        while ((n = is.read(buf)) != -1) {
+            fos.write(buf, 0, n);
+            read += n;
+            long now = System.currentTimeMillis();
+            int pct = total > 0 ? (int) (read * 100 / total) : -1;
+            if (pct != lastPct || now - lastUi > 300) {
+                lastPct = pct;
+                lastUi = now;
+                final String label = (total > 0
+                        ? "下载中 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + "MB）"
+                        : "下载中 " + (read / 1024 / 1024) + "MB")
+                        + (srcTotal > 1 ? " · 源" + srcNo : "");
+                activity.runOnUiThread(() -> btnCheckUpdate.setText(label));
+            }
+        }
+        fos.close();
+        is.close();
+        if (total > 0 && apkFile.length() < total) {
+            AppLog.d(TAG, "源 " + srcNo + " 只下载了 " + apkFile.length() + "/" + total);
+            return false;
+        }
+        java.io.RandomAccessFile raf = new java.io.RandomAccessFile(apkFile, "r");
+        byte[] header = new byte[4];
+        raf.read(header);
+        raf.close();
+        String headerStr = new String(header, "UTF-8");
+        AppLog.d(TAG, "APK 文件头: " + headerStr + " (" + bytesToHex(header) + ")");
+        return headerStr.startsWith("PK");
+    }
+
+    private void finishDownload(final File apkFile, final int remoteVersion, final boolean isTestInstall) {
+        activity.runOnUiThread(() -> btnCheckUpdate.setText("校验中..."));
+        Log.d(TAG, "下载完成: " + apkFile.getAbsolutePath() + " (" + apkFile.length() + " bytes)");
+        if (!verifyApkSignature(apkFile)) {
+            activity.runOnUiThread(() -> {
+                Toast.makeText(activity, "APK 签名校验失败，可能已被篡改", Toast.LENGTH_LONG).show();
+                resetBtn();
+            });
+            return;
+        }
+        activity.runOnUiThread(() -> installApk(apkFile, isTestInstall));
     }
 
     // ========== APK 安装（四级降级） ==========
