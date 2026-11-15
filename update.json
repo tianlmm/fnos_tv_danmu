@@ -1,13 +1,14 @@
 {
-  "versionCode": 77,
-  "versionName": "1.6.5",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.5/FNTV_1.6.5.apk",
-  "changelog": "1.在线更新支持多个下载源：GitHub 直连失败会自动换国内镜像（ghfast / gh-proxy / ghproxy）\n2.下载按钮显示「源 i/n」，可看出当前用的是哪个源\n3.更新源列表由 update.json 的 apkUrls 控制，以后可随时加镜像，无需改 APK",
+  "versionCode": 78,
+  "versionName": "1.6.6",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.6/FNTV_1.6.6.apk",
+  "changelog": "1.下载前并行测速，自动选最快的源\n2.支持断点续传（中断后从已下载位置继续，不重头开始）\n3.下载完成做 sha256 校验，不匹配自动删除\n4.按钮显示「测速中…」「下载中 42%（3/8MB）· 源2」",
   "forceUpdate": false,
   "apkUrls": [
-    "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.5/FNTV_1.6.5.apk",
-    "https://ghfast.top/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.5/FNTV_1.6.5.apk",
-    "https://gh-proxy.com/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.5/FNTV_1.6.5.apk",
-    "https://ghproxy.net/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.5/FNTV_1.6.5.apk"
-  ]
+    "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.6/FNTV_1.6.6.apk",
+    "https://ghfast.top/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.6/FNTV_1.6.6.apk",
+    "https://gh-proxy.com/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.6/FNTV_1.6.6.apk",
+    "https://ghproxy.net/https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.6/FNTV_1.6.6.apk"
+  ],
+  "sha256": "e37a9a8e6611b01d39c7539235777756872330af77dc9443c3144edfdd8b8d46"
 }

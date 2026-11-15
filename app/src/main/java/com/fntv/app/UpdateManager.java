@@ -117,6 +117,7 @@ public class UpdateManager {
                 int remoteVersion = json.optInt("versionCode", 0);
                 final String versionName = json.optString("versionName", "");
                 final String apkUrl = json.optString("apkUrl", "");
+                final String remoteSha256 = json.optString("sha256", "");
                 final java.util.List<String> apkUrls = new java.util.ArrayList<>();
                 org.json.JSONArray urlArr = json.optJSONArray("apkUrls");
                 if (urlArr != null) {
@@ -144,7 +145,7 @@ public class UpdateManager {
                 final int fRemoteVersion = remoteVersion;
                 final String label = isTestInstall ? "测试安装（版本号不高于当前）" : "发现新版本 v" + versionName;
                 activity.runOnUiThread(() ->
-                        showUpdateDialog(label, changelog, forceUpdate, apkUrls, fRemoteVersion, isTestInstall));
+                        showUpdateDialog(label, changelog, forceUpdate, apkUrls, fRemoteVersion, isTestInstall, remoteSha256));
 
             } catch (Exception e) {
                 Log.e(TAG, "检查更新异常", e);
@@ -160,14 +161,15 @@ public class UpdateManager {
 
     private void showUpdateDialog(final String title, final String changelog,
                                    final boolean forceUpdate, final java.util.List<String> apkUrls,
-                                   final int remoteVersion, final boolean isTestInstall) {
+                                   final int remoteVersion, final boolean isTestInstall,
+                                   final String sha256) {
         new android.app.AlertDialog.Builder(activity)
                 .setTitle(title)
                 .setMessage("当前版本：" + currentVersionName() + "（" + currentVersionCode + "）\n\n" + changelog)
                 .setCancelable(!forceUpdate)
                 .setPositiveButton(isTestInstall ? "测试安装器" : "立即更新", (dialog, which) -> {
                     dialog.dismiss();
-                    downloadAndInstall(apkUrls, remoteVersion, isTestInstall);
+                    downloadAndInstall(apkUrls, remoteVersion, isTestInstall, sha256);
                 })
                 .setNegativeButton(forceUpdate ? "退出应用" : "稍后再说", (dialog, which) -> {
                     if (forceUpdate) {
@@ -225,7 +227,7 @@ public class UpdateManager {
     // ========== 下载 ==========
 
     private void downloadAndInstall(final java.util.List<String> apkUrls, final int remoteVersion,
-                                    final boolean isTestInstall) {
+                                    final boolean isTestInstall, final String sha256) {
         btnCheckUpdate.setText(isTestInstall ? "测试中..." : "下载中...");
         btnCheckUpdate.setEnabled(false);
         new Thread(() -> {
@@ -233,15 +235,19 @@ public class UpdateManager {
             if (!dir.exists()) dir.mkdirs();
             final File apkFile = new File(dir, "FNTV_v" + remoteVersion + ".apk");
 
+            // ① 并行测速：每个源发 HEAD，按响应时间排序，快的先下
+            activity.runOnUiThread(() -> btnCheckUpdate.setText("测速中..."));
+            java.util.List<String> ordered = sortByLatency(apkUrls);
+            AppLog.d(TAG, "下载顺序: " + ordered);
+
             String lastError = "";
-            for (int idx = 0; idx < apkUrls.size(); idx++) {
-                final String url = apkUrls.get(idx);
+            for (int idx = 0; idx < ordered.size(); idx++) {
+                final String url = ordered.get(idx);
                 final int srcNo = idx + 1;
                 try {
-                    AppLog.d(TAG, "下载源 " + srcNo + "/" + apkUrls.size() + ": " + url);
-                    if (apkFile.exists()) apkFile.delete();
-                    if (downloadOne(url, apkFile, srcNo, apkUrls.size())) {
-                        finishDownload(apkFile, remoteVersion, isTestInstall);
+                    AppLog.d(TAG, "下载源 " + srcNo + "/" + ordered.size() + ": " + url);
+                    if (downloadOne(url, apkFile, srcNo, ordered.size())) {
+                        finishDownload(apkFile, remoteVersion, isTestInstall, sha256);
                         return;
                     }
                     lastError = "源 " + srcNo + " 下载不完整";
@@ -259,24 +265,72 @@ public class UpdateManager {
         }).start();
     }
 
-    /** 下载单个源；成功返回 true（文件头为 PK） */
+    /** 并行 HEAD 测速，按耗时升序返回（失败的排最后） */
+    private java.util.List<String> sortByLatency(java.util.List<String> urls) {
+        final java.util.Map<String, Long> cost = new java.util.concurrent.ConcurrentHashMap<>();
+        java.util.List<Thread> ts = new java.util.ArrayList<>();
+        for (final String u : urls) {
+            Thread t = new Thread(() -> {
+                long t0 = System.currentTimeMillis();
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                    c.setRequestMethod("HEAD");
+                    c.setConnectTimeout(3000);
+                    c.setReadTimeout(3000);
+                    c.setInstanceFollowRedirects(true);
+                    int code = c.getResponseCode();
+                    cost.put(u, code == 200 ? System.currentTimeMillis() - t0 : Long.MAX_VALUE);
+                } catch (Exception e) {
+                    cost.put(u, Long.MAX_VALUE);
+                }
+            });
+            t.start();
+            ts.add(t);
+        }
+        for (Thread t : ts) {
+            try { t.join(3500); } catch (InterruptedException ignored) {}
+        }
+        java.util.List<String> out = new java.util.ArrayList<>(urls);
+        out.sort((a, b) -> Long.compare(
+                cost.getOrDefault(a, Long.MAX_VALUE), cost.getOrDefault(b, Long.MAX_VALUE)));
+        return out;
+    }
+
+    /** 下载单个源，支持断点续传；成功返回 true（文件头为 PK） */
     private boolean downloadOne(String apkUrl, File apkFile, int srcNo, int srcTotal) throws Exception {
+        long have = apkFile.exists() ? apkFile.length() : 0;
         HttpURLConnection c = (HttpURLConnection) new URL(apkUrl).openConnection();
         c.setConnectTimeout(15000);
         c.setReadTimeout(30000);
         c.setInstanceFollowRedirects(true);
+        if (have > 0) c.setRequestProperty("Range", "bytes=" + have + "-");
         c.connect();
         int respCode = c.getResponseCode();
-        if (respCode != 200) {
+        boolean resumed = (respCode == 206 && have > 0);
+        if (respCode != 200 && respCode != 206) {
             AppLog.d(TAG, "源 " + srcNo + " 返回 " + respCode);
             return false;
         }
-        final long total = c.getContentLengthLong() > 0 ? c.getContentLengthLong() : c.getContentLength();
+        if (!resumed && apkFile.exists()) {
+            apkFile.delete();
+            have = 0;
+        }
+        long total = 0;
+        String cr = c.getHeaderField("Content-Range");   // bytes start-end/total
+        if (cr != null && cr.contains("/")) {
+            try { total = Long.parseLong(cr.substring(cr.lastIndexOf('/') + 1).trim()); } catch (Exception ignored) {}
+        }
+        if (total <= 0) {
+            long len = c.getContentLengthLong() > 0 ? c.getContentLengthLong() : c.getContentLength();
+            total = len + have;
+        }
+        AppLog.d(TAG, "源 " + srcNo + " 开始下载，已有 " + have + "，总大小 " + total + "，续传=" + resumed);
+
         InputStream is = c.getInputStream();
-        FileOutputStream fos = new FileOutputStream(apkFile);
+        FileOutputStream fos = new FileOutputStream(apkFile, resumed);
         byte[] buf = new byte[8192];
         int n;
-        long read = 0;
+        long read = have;
         int lastPct = -1;
         long lastUi = 0;
         while ((n = is.read(buf)) != -1) {
@@ -297,7 +351,7 @@ public class UpdateManager {
         fos.close();
         is.close();
         if (total > 0 && apkFile.length() < total) {
-            AppLog.d(TAG, "源 " + srcNo + " 只下载了 " + apkFile.length() + "/" + total);
+            AppLog.d(TAG, "源 " + srcNo + " 只下载了 " + apkFile.length() + "/" + total + "（下次可续传）");
             return false;
         }
         java.io.RandomAccessFile raf = new java.io.RandomAccessFile(apkFile, "r");
@@ -309,9 +363,22 @@ public class UpdateManager {
         return headerStr.startsWith("PK");
     }
 
-    private void finishDownload(final File apkFile, final int remoteVersion, final boolean isTestInstall) {
+    private void finishDownload(final File apkFile, final int remoteVersion,
+                                final boolean isTestInstall, final String sha256) {
         activity.runOnUiThread(() -> btnCheckUpdate.setText("校验中..."));
         Log.d(TAG, "下载完成: " + apkFile.getAbsolutePath() + " (" + apkFile.length() + " bytes)");
+        if (sha256 != null && !sha256.isEmpty()) {
+            String actual = sha256Of(apkFile);
+            AppLog.d(TAG, "sha256 期望=" + sha256 + " 实际=" + actual);
+            if (!sha256.equalsIgnoreCase(actual)) {
+                activity.runOnUiThread(() -> {
+                    Toast.makeText(activity, "安装包校验失败（sha256 不匹配），已删除", Toast.LENGTH_LONG).show();
+                    resetBtn();
+                });
+                apkFile.delete();
+                return;
+            }
+        }
         if (!verifyApkSignature(apkFile)) {
             activity.runOnUiThread(() -> {
                 Toast.makeText(activity, "APK 签名校验失败，可能已被篡改", Toast.LENGTH_LONG).show();
@@ -456,6 +523,21 @@ public class UpdateManager {
         } catch (Exception e) {
             Log.e(TAG, "签名校验异常", e);
             return false;
+        }
+    }
+
+    /** 计算文件 sha256 */
+    private static String sha256Of(File f) {
+        try (java.io.FileInputStream in = new java.io.FileInputStream(f)) {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) md.update(buf, 0, n);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
         }
     }
 
