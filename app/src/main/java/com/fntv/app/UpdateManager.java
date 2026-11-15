@@ -236,13 +236,33 @@ public class UpdateManager {
                 if (!dir.exists()) dir.mkdirs();
                 final File apkFile = new File(dir, "FNTV_v" + remoteVersion + ".apk");
 
+                final long total = Math.max(0, c.getContentLengthLong() > 0
+                        ? c.getContentLengthLong() : c.getContentLength());
                 InputStream is = c.getInputStream();
                 FileOutputStream fos = new FileOutputStream(apkFile);
                 byte[] buf = new byte[8192];
                 int n;
-                while ((n = is.read(buf)) != -1) fos.write(buf, 0, n);
+                long read = 0;
+                int lastPct = -1;
+                long lastUi = 0;
+                while ((n = is.read(buf)) != -1) {
+                    fos.write(buf, 0, n);
+                    read += n;
+                    // 进度：每变化 1% 或每 300ms 刷新一次按钮文字
+                    long now = System.currentTimeMillis();
+                    int pct = total > 0 ? (int) (read * 100 / total) : -1;
+                    if (pct != lastPct || now - lastUi > 300) {
+                        lastPct = pct;
+                        lastUi = now;
+                        final String label = total > 0
+                                ? "下载中 " + pct + "%（" + (read / 1024 / 1024) + "/" + (total / 1024 / 1024) + "MB）"
+                                : "下载中 " + (read / 1024 / 1024) + "MB";
+                        activity.runOnUiThread(() -> btnCheckUpdate.setText(label));
+                    }
+                }
                 fos.close();
                 is.close();
+                activity.runOnUiThread(() -> btnCheckUpdate.setText("校验中..."));
 
                 Log.d(TAG, "下载完成: " + apkFile.getAbsolutePath() + " (" + apkFile.length() + " bytes)");
 
