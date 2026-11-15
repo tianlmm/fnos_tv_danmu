@@ -1,7 +1,7 @@
 {
-  "versionCode": 72,
-  "versionName": "1.6.1-beta",
-  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.1-beta/FNTV_1.6.1-beta.apk",
-  "changelog": "【TV 焦点测试版】\n1.播放界面底部按钮（播放/±10秒/倍速/比例/选集/下一集/画质/亮度/信息…）增加遥控器焦点高亮\n2.设置页各行、弹幕设置/跳过设置等对话框的行也加了焦点边框\n3.焦点态：浅色底 + 2dp 主题色描边（白天蓝框，夜间绿框）",
+  "versionCode": 73,
+  "versionName": "1.6.2",
+  "apkUrl": "https://github.com/tianlmm/fnos_tv_danmu/releases/download/v1.6.2/FNTV_1.6.2.apk",
+  "changelog": "1.修复观看历史里目录类条目点进去黑屏无反应：现在会自动进详情页选集\n2.播放器遇到没有 media_guid 的条目会明确提示并返回，不再静默卡住\n3.日志新增 D/Continue 记录点击的条目类型与跳转方式",
   "forceUpdate": false
 }

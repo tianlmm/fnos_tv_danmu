@@ -759,14 +759,21 @@ public class HomeActivity extends AppCompatActivity {
         // 跑马灯：强制选中，始终滚动
         title.post(() -> title.setSelected(true));
 
-        // 点击直接播放
+        // 点击：可播放的条目直接续播，目录/剧集文件夹则进详情页选集
         final PlayListItem fi = item;
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                launchPlayer(fi.guid, fi.title, fi.tvTitle != null ? fi.tvTitle : "",
-                        fi.episodeNumber, fi.poster, fi.getCategoryLabel(),
-                        fi.ts, fi.duration, fi.parentGuid);
+                boolean isDir = "Directory".equalsIgnoreCase(fi.type) || "Folder".equalsIgnoreCase(fi.type)
+                        || (fi.guid != null && fi.guid.contains("folder"));
+                AppLog.d("Continue", "点击继续观看 guid=" + fi.guid + " type=" + fi.type + " 直接播放=" + !isDir);
+                if (isDir) {
+                    showDetail(fi);
+                } else {
+                    launchPlayer(fi.guid, fi.title, fi.tvTitle != null ? fi.tvTitle : "",
+                            fi.episodeNumber, fi.poster, fi.getCategoryLabel(),
+                            fi.ts, fi.duration, fi.parentGuid);
+                }
             }
         });
 

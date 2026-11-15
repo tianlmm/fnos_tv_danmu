@@ -757,6 +757,14 @@ public class PlayerActivity extends AppCompatActivity {
                         return;
                     }
 
+                    if (mediaGuid == null || mediaGuid.isEmpty()) {
+                        // 目录/文件夹类条目没有 media_guid，硬播只会黑屏
+                        AppLog.e(TAG, "play/info 没有 media_guid，type=" + info.type + " guid=" + itemGuid);
+                        Toast.makeText(PlayerActivity.this,
+                                "该条目是目录，请在详情页选择具体集数", Toast.LENGTH_LONG).show();
+                        finish();
+                        return;
+                    }
                     // 获取直链信息，获取完后开始播放
                     cloudStreamManager.fetchDirectLink(itemGuid, mediaGuid);
                 }
